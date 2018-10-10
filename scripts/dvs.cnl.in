@@ -1,0 +1,104 @@
+#!/bin/sh
+# Startup script for DVS.
+#
+# Copyright Cray Inc. All Rights Reserved
+#
+#
+### BEGIN INIT INFO
+# Provides:          dvs
+# Required-Start:    $remote_fs
+# Required-Stop:
+# Default-Start:     2 3 5
+# Default-Stop:      0 6
+# Short-Description: DVS filesystem service
+# Description:       DVS provides a distributed filesystem service
+### END INIT INFO
+
+. /etc/rc.status
+. @default_prefix@/etc/init.d/functions
+
+rc_reset
+
+PATH=${PATH}:/sbin:/usr/sbin
+
+LOCAL_BOOT=0
+
+CMD=${0##*/}
+
+#
+# Set the appropriate lower transport.
+#
+if isportals
+then
+    IPC_TRANSPORT=portals
+else
+    IPC_TRANSPORT=lnet
+fi
+
+#
+# rc_failed not provided by cnl rc.status
+#
+rc_failed()
+{
+    return $1
+}
+
+start() {
+    #
+    # start DVS
+    #
+
+    echo "Starting DVS service: "
+
+    # Don't start DVS if no mount points are defined
+    checkmounts
+
+    # Create DVS device node
+    make_dev_uss
+
+    modload dvsproc ssiproc_max_nodes=${TOTAL_NODES}
+
+    seed_node_map
+
+    if ! isportals && ! isloaded kgnilnd
+    then
+      # Make sure lnet stack is loaded.
+      modload kgnilnd
+      modload lnet 
+      modload libcfs
+    fi
+
+    modload dvsipc_${IPC_TRANSPORT}
+    modload dvsipc
+    modload dvsutil
+    modload dvsof
+    modload dvspn
+
+    domounts
+    rc_status -v
+}
+
+stop() {
+    echo "Stopping DVS service: "
+    do_unmount
+    rc_status -v
+}
+
+case "$1" in
+	start)
+	    start
+	    ;;
+	stop)
+	    stop
+	    ;;
+	restart)
+	    stop
+	    start
+	    ;;
+	*)
+	    echo $"Usage: $0 {start|stop|restart}"
+            rc_failed 2
+            rc_status -v
+            ;;
+esac
+rc_exit

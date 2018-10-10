@@ -1,0 +1,131 @@
+Chris Johns - October 13th 2006
+
+Cassatt DVS is restructured for a 2.6 Linux kernel.
+
+Current status
+--------------
+The resource manager on node 0 works, and DVS nodes (nodes 1 and up)
+can communicate with it. Mounting a DVS filesystem on a DVS client node
+from 2 DVS server nodes (a 2-stripe DVS filesystem) works.
+Creating a file, reading, and writing data to the file works, as does
+deletion of files, mkdir, rmdir, and mknod.
+
+See file 'console.out' for a full log.
+
+Details
+-------
+
+See the file 'layout' for details of how the source tree is laid out.
+
+For each kernel module in kernel/*, see the README in each directory for
+details of both required and exported symbols.
+
+Shell scripts 'get_required' and 'get_exported' are provided to allow
+easy extraction of the required and exported symbol names.
+
+The source code contains several ifdefs to allow it to compile while providing
+an audit trail of the changes for 2.6:
+
+	CBJ_64          Code requiring 64-bit modulus/division operations
+
+There are also several #if __x86_64__ statements which allow the code to
+compile on an Opteron 64-bit system.
+
+The top-level Makefile builds the user-mode library, user commands, and
+then the kernel modules, all by calling sub-makefiles in each directory.
+
+Note that the kernel modules are built using the 2.6 kernel's kbuild system.
+
+Following a successful build, commands are placed in bin/cmd, and kernel
+modules in bin/modules. System startup scripts for the various services are
+in bin/scripts. These scripts should be installed in the appropriate
+SuSE manner into /etc/init.d.
+
+[Note: kernel/cbjtest contains a simple kernel module that exercises a few
+of the Cassatt system call linkage wrappers, sys_open(), sys_read()
+and sys_close(), as an example of how this works without modifying the kernel
+of implementing our own copies of system calls.]
+
+System Configuration
+--------------------
+For the single resource manager (RM) node, the scripts in /etc/init.d
+would be:
+
+	basemods, dvsrmclient, dvsrmserver
+
+The required kernel modules, to be placed in /lib/modules/<kernel-ver>/cassatt
+are:
+
+	dvsklib, dvstcp, dvsutil, dvsproc, dvsrmclient, dvsrmserver
+
+and the required commands should be placed in /usr/bin:
+
+	rmsstat
+
+and the required system commands in /usr/libexec/cassatt/sbin:
+
+	shutdown_uss, sockipc
+
+For a DVS node, the required scripts are:
+
+	basemods, dvsrmclient, dvs
+
+The required kernel modules, to be placed in /lib/modules/<kernel-ver>/cassatt
+are:
+
+	dvsklib, dvstcp, dvsutil, dvsproc, dvsrmclient, dvsof, dvspn
+
+and the required commands should be placed in /usr/bin:
+
+	dvs_sb, dvsconfig
+
+and the required system commands in /usr/libexec/cassatt/sbin:
+
+	shutdown_uss, sockipc
+
+NOTE
+----
+A file called /etc/rms/node-map must be present on all RM and DVS nodes and
+must have the same contents on each node. Typically, this is done by keeping
+the file on the RM node and exporting /etc/rms to the other nodes.
+This file contains one line of text per node, of the form:
+
+nodename ip-address
+
+The number of the line in this file, starting at 0, is used to assign a
+node number of each node, and the nodename is used in status commands, but
+need not appear in the /etc/hosts file.
+
+For example:
+
+rmnode 192.168.1.103
+dvs-server-1 192.168.1.104
+dvs-server-2 192.168.1.105
+dvs-client 192.168.1.106
+
+In addition, the RM node's IP address should be in /etc/rms/virtual-cnode-ip
+to allow for correct functioning of the basemods startup script.
+
+Creating an example  DVS filesystem
+-----------------------------------
+Assume the example configuration above, with 2 DVS server nodes and a
+single DVS client node, and an NFS server from which 2 directories can be
+exported (say 192.168.1.101, directories /tmp/dvs-stripe-1 and
+/tmp/dvs-stripe-2). Note that the mountpoints of the DVS stripes on the
+DVS server nodes, and the mountpoint of the DVS filesystem on the DVS client
+node(s) must be the same. In this example, we're using /dvs as the mountpoint.
+
+On DVS server 1:
+	mkdir /dvs
+	mount 192.168.1.101:/tmp/dvs-stripe-1 /dvs
+
+On DVS server 2:
+	mkdir /dvs
+	mount 192.168.1.101:/tmp/dvs-stripe-2 /dvs
+
+On one of the DVS server nodes:
+	dvsconfig /dvs dvs-server-1 dvs-server-2
+
+On the client node:
+	mkdir /dvs
+	mount -t dvs -o path=/dvs,nodename=dvs-server-1 /dvs /dvs

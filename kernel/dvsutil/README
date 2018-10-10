@@ -1,0 +1,16 @@
+
+External symbols from modules:
+
+R	ipc_init
+R	ipc_term
+R	ipc_utility_call
+R	max_nodes
+R	send_ipc_reply
+R	usi_callback
+R	usi_node_addr
+
+Symbols exported:
+
+X	ssiutil_register_handlers
+X	ssiutil_unregister_handlers
+X	usi_transport_callback

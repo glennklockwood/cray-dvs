@@ -1,0 +1,52 @@
+#
+# designed to be pdsh launched to multiple service nodes.
+#
+# Can use the new offset and stride arguments to simulate the I/O coming from DVS
+# servers striping to a shared file.
+#
+# example: pdsh -w c1-0c1s2n0 c1-0c1s2n1 1-0c1s2n2 c1-0c1s2n3 /ufs/home/crayadm/start_ioperf
+# ioperf should have been compiled non-MPI (#if 0 around line 110 of ioperf.c)
+#
+START=/home/crayadm
+SERVER_LIST="c1-0c1s2n0 c1-0c1s2n1 c1-0c1s2n2 c1-0c1s2n3"
+export DVS_BLKSIZE=1048576
+RUNFROM=/gpfs/iotest
+STARTFILE=$RUNFROM/ioperf.start
+
+this_node=`cat /proc/cray_xt/cname`
+server_ord=0
+server_count=0
+for server in $SERVER_LIST
+do
+  if [ $this_node = $server ]
+  then
+    server_ord=$server_count
+  fi
+  server_count=`expr $server_count + 1`
+done
+
+start_off=`expr $server_ord \* $DVS_BLKSIZE`
+server_stripe=`expr $DVS_BLKSIZE \* $server_count`
+
+if [ $server_ord = 0 ]
+then
+  if [ ! -d $RUNFROM ]
+  then
+    mkdir -p $RUNFROM
+  fi
+  touch $STARTFILE
+else
+  while [ ! -f $STARTFILE ]
+  do
+    true
+  done
+fi
+
+cd $RUNFROM
+
+$START/ioperf -d test -f cherfile -i 10 -b $DVS_BLKSIZE -o $start_off -big -s $server_stripe -write -read -noclean
+
+if [ $server_ord = 0 ]
+then
+  rm $STARTFILE
+fi

@@ -1,0 +1,16 @@
+
+External symbols from modules:
+
+	NONE
+
+Symbols exported:
+
+X	node_map
+X	ssi_nodeid
+X	ssiproc_get_max_nodes
+X	ssiproc_get_my_nodeid
+X	ssiproc_lock_node_map
+X	ssiproc_max_nodes
+X	ssiproc_parse_mapfile
+X	ssiproc_unlock_node_map
+X	usi_node_addr

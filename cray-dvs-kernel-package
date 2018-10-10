@@ -1,0 +1,7 @@
+%defattr(-,root,root)
+%dir %{_namespace_prefix}/cray-dvs-kmp
+%dir %{_namespace_prefix}/cray-dvs-kmp/%{release_version}
+%dir %{_namespace_prefix}/cray-dvs-kmp/%{release_version}/lib
+%dir %{_namespace_prefix}/cray-dvs-kmp/%{release_version}/lib/modules
+%dir %{_namespace_prefix}/cray-dvs-kmp/%{release_version}/lib/modules/%2-%1
+%{_namespace_prefix}/cray-dvs-kmp/%{release_version}/lib/modules/%2-%1

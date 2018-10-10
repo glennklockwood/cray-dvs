@@ -1,0 +1,327 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--Arbortext, Inc., 1988-2012, v.4002-->
+<!DOCTYPE refentry PUBLIC "-//Cray Inc.//DTD Cray XML Docbook axbook-based subset V1.0//EN" "craybook.dtd" [
+<!ENTITY % crayref-titles.ent PUBLIC "-//Cray Inc.//ELEMENTS RefEntry Section Titles//EN" "crayref-titles.ent">
+%crayref-titles.ent;
+<!ENTITY % manualtitles.ent PUBLIC "-//Cray Inc.//ELEMENTS Cray Manual Titles//EN" "manualtitles.ent">
+%manualtitles.ent;
+<!ENTITY % manualtitles-current.ent PUBLIC "-//Cray Inc.//ELEMENTS Cray Current Manual Titles//EN" "manualtitles-current.ent">
+%manualtitles-current.ent;
+<!ENTITY % strings.ent PUBLIC "-//Cray Inc.//ELEMENTS Cray Strings//EN" "strings.ent">
+%strings.ent;
+<!ENTITY % graphics.ent PUBLIC "-//Cray Inc.//ELEMENTS Cray Graphics//EN" "graphics.ent">
+%graphics.ent;
+]>
+<?Pub Inc?>
+<!-- $LastChangedDate: 2016-11-16 $ -->
+<refentry id="dvs.5">
+<refmeta>
+	<refentrytitle>dvs</refentrytitle>
+	<manvolnum>5</manvolnum>
+	<refmiscinfo class="package">dvs_trunk</refmiscinfo>
+	<refmiscinfo class="pl">dvsm</refmiscinfo>
+	<refmiscinfo class="rel">trunk</refmiscinfo>
+</refmeta>
+<refnamediv>
+	<refname>dvs</refname>
+	<refpurpose>Cray DVS <filename>fstab</filename> format and options</refpurpose>
+</refnamediv>
+<refsynopsisdiv>
+<title>SYNOPSIS</title>
+<synopsis><filename>/etc/fstab</filename></synopsis>
+</refsynopsisdiv>
+<refsect1>
+<title>IMPLEMENTATION</title>
+<para>Cray Linux Environment (CLE)</para>
+</refsect1>
+<refsect1>
+	<title>DESCRIPTION</title>
+	<para>The <filename>fstab</filename> file contains information about which file systems to mount where and with what options. For Cray DVS mounts, the <filename>fstab</filename> line contains the server's exported mount point path in the first field, the local mount point path in the second field, and the file system type <literal>dvs</literal> in the third field. The fourth field contains comma separated DVS-specific mount options described below.</para>
+</refsect1>
+<refsect1>
+	<title>OPTIONS</title>
+	<variablelist>
+<varlistentry>
+<term><option>path=<replaceable>/pathname</replaceable></option></term>
+<listitem><para>Set <replaceable>pathname</replaceable> to the mount point on the DVS server node. The <replaceable>pathname</replaceable> should be an absolute path, and must exist on the DVS server node. This is a required argument on the options field.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>nodename=<replaceable>node</replaceable></option></term>
+<listitem><para>Specify the DVS server node name that will provide service to the file system specified by the <option>path</option> argument. The path name must exist on the server node specified. Specify the physical ID for the node, for example <literal>c0-0c0s0n0</literal>, which maps to a node ordinal. This is a required argument on the options field.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>nodefile=</option><replaceable>filename</replaceable></term>
+<listitem><para>This serves the same function as the <option>nodename</option> argument but allows the node list to be contained in a file. Each <option>nodename</option> contained in the file can be separated by a newline or the colon (:) character.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>blksize=<replaceable>n</replaceable></option></term>
+<listitem><para>Sets the DVS block size to <replaceable>n</replaceable> bytes.  The default value is 524288.<!--If more than one node was specified by the <option>node</option> argument, <option>blksize</option> controls the unit of striping for data read from or written to the DVS server nodes. The first <replaceable>n</replaceable> bytes are read from or written to the first server node, then the next <replaceable>n</replaceable> bytes to the next server node, and so on.
+--></para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>cache</option></term>
+<listitem><para>Enables client-side read caching. The client node will perform caching of reads from the DVS server node and provide data to user applications from the page cache if possible, instead of performing a data transfer from the DVS server node. <note><para>Cray DVS is not a clustered file system; No coherency is maintained between multiple DVS client nodes reading and writing to the same file. If <option>cache</option> is enabled and data consistency is required, applications must take care to synchronize their accesses to the shared file.</para>
+</note></para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>nocache</option></term>
+<listitem><para>Disables client-side read caching. This is the default behavior.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>datasync</option></term>
+<listitem><para>Enables data synchronization. The DVS server node will wait until data has been written to the underlying media before indicating that the write has completed.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>nodatasync</option></term>
+<listitem><para>Disables data synchronization. The DVS server node will return from a write request as soon as the user's data has been written into the page cache on the server node. This is the default behavior.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>closesync</option></term>
+<listitem><para>Enables data synchronization on last close of a file. When a process performs the final close of a file descriptor, in addition to forwarding the close to the DVS server, the DVS server node will wait until data has been written to the underlying media before indicating that the close has completed. Since DVS does not cache data on client nodes and has no replay capabilities, this ensures that data is not lost should a server node crash after an application has exited. <note><para>When DVS periodic sync is enabled, it is redundant to use this option. Periodic sync is also more efficient since it tracks which files are "dirty."</para>
+</note></para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>noclosesync</option></term>
+<listitem><para>Disables data synchronization on last close of a file. The DVS server will return from a close request immediately. This is the default behavior.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>retry</option></term>
+<listitem><para>Enables the <option>retry</option> option, which affects how a DVS client node behaves in the event of a DVS server node going down. If <option>retry</option> is specified, any user I/O request is retried until it succeeds, receives an error other than a node down indication, or receives a signal to interrupt the I/O operation. This is the default behavior.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>noretry</option></term>
+<listitem><para>Disables the <option>retry</option> option. An I/O that failed due to a DVS server node failure will return an <literal>EHOSTDOWN</literal> error to the user application without attempting the operation again.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>failover</option></term>
+<listitem><para>Enables failover and failback of DVS servers. If multiple DVS servers are listed for a single DVS mount point and one or more of the servers fails, operations for that mount point will continue by using the subset of servers still available. When the downed servers are rebooted and load DVS, any client mount points that had performed failover operations will failback to once again include the servers as valid nodes for I/O forwarding operations. The failover option can not be specified at the same time as the <option>noretry</option> option. If all servers fail, operations for the mount point will behave as described by the <option>retry</option> option until the at least one server is rebooted and has loaded DVS.  This is the default behavior.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>nofailover</option></term>
+<listitem><para>Disables failover and failback of DVS servers. If one or more servers for a given mount point fail, operations for that mount point will be behave as described by the corresponding <option>retry</option> or <option>noretry</option> option specified for the mount point.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>killprocess</option></term>
+<listitem><para>Enables killing processes that have one or more file descriptors with data that has not yet been written to the backing store. DVS provides this option to attempt to ensure that a process is not affected by silent data loss, for example, when data still resides in the kernel or file system page cache on the DVS server after a write has completed. If DVS periodic sync is enabled, DVS servers will attempt to <literal>fsync</literal> dirty files to minimize the number of processes that are killed. DVS periodic sync will also <literal>fsync</literal> a file's data when the file is closed. While it is highly unlikely, if DVS periodic sync is not enabled, DVS cannot fully guarantee prevention of silent data loss with this option alone since a <literal>close()</literal> does not guarantee data has been transferred to the underlying media (see the <literal>closesync</literal> option). This is the default behavior.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>nokillprocess</option></term>
+<listitem><para>Disables the killing of processes that have written data to a DVS server when a server fails.  When a server fails, processes that have written data to the server will not be killed. Should a process continue to perform operations with an open file 	descriptor that had been used to write data to the server, the 	operations will fail ( with <literal>errno</literal> set to <literal>EHOSTDOWN</literal>). A new open of the file will be allowed and addition operations with the corresponding file descriptor will function normally.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>deferopens</option></term>
+<listitem><para>Defers DVS client open requests to DVS servers for a given set of conditions.  When a file is open in stripe parallel or atomic stripe parallel<!-- or lane modes,--> DVS clients will only send the open request to a single DVS server.  Additional open requests will be sent as necessary when the DVS client performs a read or write to a different server for the first time. The <option>deferopens</option> option deviates from POSIX specifications.  For example, if a file was removed after the initial open succeeded but before deferred opens were initiated by a read or write operation to a new server, the read or write operation would fail with <literal>errno</literal> set to <literal>ENOENT</literal> (since the open was unable to open the file).</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>nodeferopens</option></term>
+<listitem><para>Disables the deferral of DVS client open requests to DVS servers. When a file is open in stripe parallel or atomic stripe parallel modes, <!--or lane modes,--> DVS clients will send open requests to all DVS servers denoted by <replaceable>nodename</replaceable> or <replaceable>nodefile</replaceable>. This is the default behavior. </para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>atomic</option></term>
+<listitem><para>Enables atomic stripe parallel mode. This ensures that stripe parallel requests adhere to POSIX read/write atomicity rules. DVS clients will send each I/O request to a single DVS server to ensure that the bytes are not interleaved with other requests from DVS clients. The DVS server used to perform the read, write, or metadata operation is selected using an internal hash involving the underlying 	file or directory inode number and the offset of data into the file relative to the DVS block size.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>noatomic</option></term>
+<listitem><para>Disables atomic stripe parallel mode. If <option>nodename</option> or <option>nodefile</option> lists multiple DVS servers, and neither loadbalance or cluster parallel mode is specified, DVS will stripe I/O requests across multiple servers 	and not necessarily adhere to POSIX read/write atomicity rules if file locking is not used.  This is the default behavior.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>loadbalance</option></term>
+<listitem><para>Enables <option>loadbalance</option> mode.  All I/O requests are directed to one and only one of the DVS servers specified by the <option>nodename</option> or <option>nodefile</option> options. The DVS server is selected based on an internal node ID in a manner that distributes servers evenly between the clients. Failover is automatically enabled; if a DVS server fails and multiple servers are configured for the mount point, DVS will distribute the load over the remaining servers. Use of the <option>loadbalance</option> option automatically forces the mount point to be read-only to prevent data integrity issues when projecting non-coherent file systems and to prevent coherency thrash for coherent file systems.  Because the mount points are read-only, it may be desirable for administrators to also use the <option>cache</option> and <option>attrcache_timeout</option> options.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>clusterfs</option></term>
+<listitem><para>Set the <option>clusterfs</option> option when the DVS servers are providing access to an underlying file system that is shared or clustered. <!--When <option>clusterfs</option> is set, the mount should proceed without expecting to find a per-server on-disk DVS superblock. 
+--> File I/O to DVS <option>clusterfs</option> file systems will go to a single shared file. The <option>clusterfs</option> option is set by default.<!--This allows the same file to be read and written from a DVS client node, a DVS server node, or a node outside of the DVS environment which is sharing the clustered file system.File I/O to DVS <option>non-clusterfs</option> file systems will go to a separate file of that name per DVS server node.  
+--></para>
+</listitem>
+</varlistentry>
+<!--<varlistentry>
+<term><option>lane_width</option></term>
+<listitem><para> specifies the lane width to be used for lane mode PanFS configurations. A <option>lane_depth</option> must also be specified. The number of nodes specified by <option>nodename</option> or <option>nodefile</option> must equal (<option>lane_width</option> * <option>lane_depth</option>). The list of servers specified by <option>nodename</option> or <option>nodefile</option> are parsed in a depth-first manner. This value should only be set by an administrator familiar with the PanFS I/O configuration of the system.</para>
+</listitem>
+</varlistentry><varlistentry>
+<term><option>lane_depth</option></term>
+<listitem><para>specifies the lane depth to be used for lane mode PanFS configurations. A <option>lane_width</option> must also be specified. The number of nodes specified by <option>nodename</option> or <option>nodefile</option> must equal (<option>lane_width</option> * <option>lane_depth</option>). The list of servers specified by <option>nodename</option> or <option>nodefile</option> are parsed in a depth-first manner. The <option>maxnodes</option> option must be less than or equal to <option>lane_depth</option>. If <option>maxnodes</option> is not specified, it defaults to the value of <option>lane_depth</option>. This value should only be set by an administrator familiar with the PanFS I/O configuration of the system.</para>
+</listitem>
+</varlistentry>-->
+<varlistentry>
+<term><option>maxnodes=<replaceable>n</replaceable></option></term>
+<listitem><para><option>maxnodes</option>=<replaceable>n</replaceable> limits the I/O to a subset of n DVS server nodes out of the     list of nodes provided. This allows the administrator to mount a DVS file system that is accessible to a large number of nodes, but have I/O only go to a smaller subset of nodes out of the possible set on a per-file basis. If one of the subset of nodes fails, DVS on the client node will failover to a replacement node from the larger set. If <option>maxnodes</option> is set equal to 1, then the DVS is in cluster parallel mode. If <option>maxnodes</option> is greater than 1, then DVS is in a parallel mode such as stripe parallel and atomic stripe parallel. <!--If lane mode is specified, <option>maxnodes</option> specifies how many servers from each lane are to be used for a given file, and <option>maxnodes</option> can not be greater than <option>lane_depth</option>-->Please see "Introduction to Cray Data Virtualization Service" for more information.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>userenv</option></term>
+<listitem><para>Allow user environment variables (see below) to affect the behavior of I/O to a DVS file. Processing of environment variables occurs at the time a file is opened. This is the default behavior.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>nouserenv</option></term>
+<listitem><para>Turn off the processing of user environment variables at the time a DVS file is opened.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>attrcache_timeout</option>=<replaceable>n</replaceable></term>
+<listitem><para><option>attrcache_timeout</option> enables client-side attribute caching. File attributes and <literal>dentries</literal> for <literal>getattr</literal> requests, pathname lookups, etc. will be read from DVS servers and cached on the DVS client for <replaceable>n</replaceable> seconds.  Additional lookups or <literal>getattr</literal> requests will use the cached attributes until the timeout expires, at which point they will be read and cached again on first reference.  	</para>
+<para>Attribute caching can have an extremely positive impact on performance, most notably in pathname lookup situations.  When attribute caching is disabled, DVS clients must send a lookup request to a DVS server	for every level of a pathname, and repeat this for every pathname 	operation. When it is enabled, it sends a lookup request to a DVS server for every level of a pathname once per <replaceable>n</replaceable> seconds.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>magic</option></term>
+<listitem><para>Defines what the expected file system magic value for the projected file system on the DVS servers should be.  When a DVS client attempts to mount the file system from a server, it will verify that the underlying file system has a magic value that matches the specified value. If not, the DVS client will exclude that DVS server from the list of servers it utilizes for the mount point and print a message to the system console. Once the configuration issue on the DVS server has been addressed and the client mounts the correct file system, DVS can be restarted on the server. All clients will subsequently verify that the server is configured correctly and include the server for that mount point. Many file system magic values are defined in the <filename>/usr/include/linux/magic.h</filename> file.</para>
+<para>Commonly used magic values on Cray systems are:</para>
+<programlisting>NFS					0x6969
+<!--PanFS				0xaad7aaea
+-->GPFS				0x47504653
+Lustre servers	0x0bd00bd1
+Lustre clients	0x0bd00bd0</programlisting>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>distribute_create_ops</option></term>
+<listitem><para>Distribute and create similar operations across all available servers. By default all operations requested from within the same directory for a file or directory that does not yet have an inode, such as a create, will target a single server. <literal>distribute_create_ops</literal> mode prevents this by changing the hash to distribute requests across all servers. This improves performance and scalability by taking advantage of all available servers rather than overloading a single server with all requests. Operations distributed are <literal>creates</literal>, <literal>mkdirs</literal>, <literal>lookups</literal>, <literal>mknods</literal>, <literal>links</literal>, and <literal>symlinks</literal>. This option is only supported on cluster file systems and is not allowed for NFS mounts.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>no_distribute_create_ops</option></term>
+<listitem><para>Disables the distribution of <literal>create</literal> and similar requests.  In this mode all such operations from within the same directory will target a single server. This is the default behavior.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>ro_cache</option></term>
+<listitem><para>Enable read-only caching for files on writable mount points. Files opened with read-only permissions in <option>ro_cache</option> mode are treated as if they are on a DVS read-only cached mount point. If the file has any concurrent <literal>open</literal> that has write permissions all instances of that file will revert to the default <option>no_ro_cache</option> mode for the current and subsequent reads.</para>
+</listitem><?Pub Caret 105?>
+</varlistentry>
+<varlistentry>
+<term><option>no_ro_cache</option></term>
+<listitem><para>Disables read-only caching for files on writable mount points. This is the default behavior.</para>
+</listitem>
+</varlistentry>
+</variablelist>
+</refsect1>
+<refsect1>
+<title>DVS-SPECIFIC <literal>ioctl</literal> COMMANDS</title>
+<para></para>
+<para>DVS makes available to user space applications <literal>ioctl</literal> commands that can be used to query DVS configuration data for a specific file visible on a DVS mount point. The <literal>ioctl</literal> commands are defined in the header file <filename>dvs_ioctl.h</filename>. Users can build against this header by loading the DVS module and including the header file in their source.</para>
+<para>All defined DVS <literal>ioctl</literal> commands set the <literal>argp</literal> argument of the <literal>ioctl()</literal> system call to the requested value. DVS <literal>ioctl</literal> commands return a non-negative value on success and an error code on failure. The following DVS <literal>ioctl</literal> commands are available for use:   </para>
+<variablelist>
+<varlistentry>
+<term><literal>DVS_GET_REMOTE_FS_MAGIC</literal></term>
+<listitem><para>Returns the file system type magic value of the remote file system being projected to a local DVS mount point for a given file visible on that mount point. The size of the returned argument is <literal>unsigned long int</literal>.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><literal>DVS_GET_FILE_BLK_SIZE</literal></term>
+<listitem><para>Returns the DVS block size in bytes for a given file visible on a DVS mount point. The size of the returned argument is <literal>int</literal>.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><literal>DVS_GET_FILE_STRIPE_WIDTH</literal></term>
+<listitem><para>returns the DVS stripe width (or the <option>maxnodes</option> option value) for a given file visible on a DVS mount point. The size of the returned argument is <literal>int</literal>.</para>
+</listitem>
+</varlistentry>
+</variablelist>
+</refsect1>
+<refsect1>
+<title>ENVIRONMENT VARIABLES</title>
+<para>Unless the DVS filesystem has been mounted with the <option>nouserenv</option> option, specific user environment variables are taken into account during the open of a DVS file. These environment variables override the values of the equivalent options that were specified, or defaulted, on the mount command when the DVS-projected file system was mounted, and only apply to that instance of the open file.</para>
+<variablelist>
+<varlistentry>
+<term><option>DVS_DATASYNC= &lt;on|off></option></term>
+<listitem><para>Overrides the <option>-o datasync</option> or <option>nodatasync</option> mount options.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>DVS_CLOSESYNC= &lt;on|off></option></term>
+<listitem><para>Overrides the <option>-o closesync</option> or <option>noclosesync</option> mount options.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>DVS_CACHE= &lt;on|off></option></term>
+<listitem><para>Overrides the <option>-o cache</option> or <option>nocache</option> mount options. Also overrides read-only cache option, <option>ro_cache</option>, for the user if set to <literal>off</literal>.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>DVS_BLOCKSIZE=</option><replaceable>n</replaceable></term>
+<listitem><para>Overrides the <option>-o blksize</option> mount option. The specified blocksize must be greater than zero, otherwise the variable has no effect.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>DVS_MAXNODES=</option><replaceable>n</replaceable></term>
+<listitem><para>Overrides the <option>-o maxnodes</option> mount option. The specified value of <option>maxnodes</option> must be greater than zero and less than or equal to the number of server nodes specified on the mount. Otherwise the variable has no effect.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>DVS_KILLPROCESS= &lt;on|off></option></term>
+<listitem><para>Sets the behavior for the <literal>killprocess</literal> or <literal>nokillprocess</literal> mount options.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>DVS_ATOMIC= &lt;on|off></option></term>
+<listitem><para>Sets the behavior for the	<option>atomic</option> or <option>noatomic</option> mount options.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>DVS_DEFEROPENS= &lt;on|off></option></term>
+<listitem><para>Sets the behavior for the <literal>killprocess</literal> or <literal>nokillprocess</literal> mount options.</para>
+</listitem>
+</varlistentry>
+<varlistentry>
+<term><option>DVS_READONLY_CACHE=&lt;on|off></option></term>
+<listitem><para>Overrides the <option>readonly_cache</option> or <option>no_readonly_cache</option> mount options.</para>
+</listitem>
+</varlistentry>
+</variablelist>
+</refsect1>
+<refsect1>
+<title>EXAMPLES</title>
+<para>Here is an example <filename>/etc/fstab</filename> file entry for a DVS client to mount /dvs-shared on the DVS server node as /dvs.</para>
+<para>Serial:</para>
+<literallayout>/dvs-shared    /dvs  dvs  path=/dvs,nodename=c0-0c0s1n0</literallayout>
+<para>Cluster parallel:</para>
+<literallayout>/dvs-shared    /dvs  dvs  path=/dvs,nodename=c0-0c2s1n0:c0-0c2s1n3:c0-0c2s2n0,maxnodes=1</literallayout>
+<para>Loadbalance</para>
+<literallayout>/dvs-shared    /dvs  dvs  path=/dvs,nodename=c0-0c2s1n0:c0-0c2s1n3:c0-0c2s2n0,cache,ro,attrcache_timeout=14400,loadbalance</literallayout>
+<para>Stripe parallel:</para>
+<literallayout>/dvs-shared    /dvs  dvs  path=/dvs,nodename=c0-0c2s1n0:c0-0c2s1n3:c0-0c2s2n0,maxnodes=3	</literallayout>
+<!--<para>Lane (PanFS only):</para><literallayout width="">/panfs  /panfs dvs  path=/panfs,nodename=c0-0c0s3n0:c0-0c0s3n1:c0-0c0s4n0:c0-0c0s4n1,lane_width=2,lane_depth=2</literallayout>-->
+<para>Atomic stripe parallel:</para>
+<literallayout width="1">	/dvs-shared /dvs dvs path=/dvs,nodename=c0-0c2s1n0:c0-0c2s1n3:c0-0c2s2n0,maxnodes=3,atomic
+</literallayout>
+</refsect1>
+<refsect1>
+<title>FILES</title>
+<variablelist>
+<varlistentry>
+<term><filename>/etc/fstab</filename></term>
+<listitem><para>Static information about file systems</para>
+</listitem>
+</varlistentry>
+</variablelist>
+</refsect1>
+<refsect1>
+<title>SEE ALSO</title>
+<para><command moreinfo="refentry" role="5">fstab</command>, <command moreinfo="refentry" role="8">mount</command>, <command moreinfo="refentry" role="8">umount</command></para>
+</refsect1>
+</refentry>
+<?Pub *0000029227 0?>

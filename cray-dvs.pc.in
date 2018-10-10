@@ -1,0 +1,8 @@
+
+includedir=@includedir@
+symversdir=@datadir@/symvers
+
+Cflags: -I${includedir}
+Description: DVS (Data Virtualization Service)
+Name: @PACKAGE_NAME@
+Version: @PACKAGE_VERSION@

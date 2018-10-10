@@ -1,0 +1,28 @@
+
+External symbols from modules:
+
+R	build_rma_list
+R	count_ipc_memory
+R	end_rma
+R	identity_valid
+R	ipc_rma_get
+R	map_ipc_memory
+R	msg0_thread
+R	node_map
+R	send_ipc_reply
+R	send_ipc_request
+R	send_ipc_request_async
+R	setup_rma
+R	ssi_pts_table_find_entry
+R	ssiproc_max_nodes
+R	ssiutil_register_handlers
+R	ssiutil_unregister_handlers
+R	unmap_ipc_memory
+R	usi_node_addr
+R	usi_transport_callback
+R	wait_for_async_request
+
+Symbols exported:
+
+X	upfsaops
+X	upfsfops

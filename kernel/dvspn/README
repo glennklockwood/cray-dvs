@@ -1,0 +1,17 @@
+
+External symbols from modules:
+
+R	node_map
+R	send_ipc_reply
+R	send_ipc_request
+R	ssi_pts_table_find_entry
+R	ssiproc_max_nodes
+R	ssiutil_register_handlers
+R	ssiutil_unregister_handlers
+R	upfsaops
+R	upfsfops
+R	usi_node_addr
+
+Symbols exported:
+
+	NONE

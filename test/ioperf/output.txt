@@ -1,0 +1,98 @@
+# This example is for a configuration where DVS is projecting two ram
+# file systems to the compute nodes.  The '-m' option is used to force
+# MPI ranks to alternate their output files between the two mount points
+# /tmp/ramtest0 (DVS server c0-0c1s6n3) and /tmp/ramtest01 (DVS server
+# c0-0c1s6n0).  The compute node setup necessary was:
+#
+# mkdir /tmp/ramtest0
+# mkdir /tmp/ramtest1
+# mount -t dvs -o "path=/tmp,nodename=c0-0c1s6n3,blksize=1048576" /tmp/ \
+# /tmp/ramtest0
+# mount -t dvs -o "path=/tmp,nodename=c0-0c1s6n0,blksize=1048576" /tmp/ \
+# /tmp/ramtest1
+#
+
+
+crayadm@musky-p3-0:~/> aprun -n 8 -N 1 ./ioperf -p /tmp/ramtest -d dir -f file -m 2 -i 10000 -b 1048576 -noclean -u -read -write -opcl -crrm
+Thu Feb 25 09:41:21 2010
+command: ./ioperf -p /tmp/ramtest -d dir -f file -m 2 -i 10000 -b 1048576 -noclean -u -read -write -opcl -crrm 
+rank 0 using file: /tmp/ramtest0/dir.0/file.48.2406
+rank     0: create: 4.336 seconds   2306 creates/sec
+rank     1: create: 4.424 seconds   2260 creates/sec
+rank     2: create: 4.472 seconds   2236 creates/sec
+rank     3: create: 4.364 seconds   2291 creates/sec
+rank     4: create: 4.472 seconds   2236 creates/sec
+rank     5: create: 4.360 seconds   2294 creates/sec
+rank     6: create: 4.372 seconds   2287 creates/sec
+rank     7: create: 4.272 seconds   2341 creates/sec
+create  min  rank     7  4.272 seconds   2341 creates/sec
+create  max  rank     2  4.472 seconds   2236 creates/sec
+create  avg              4.384 seconds   2281 creates/sec
+create  total            4.472 seconds  18252 creates/sec
+
+rank     0: unlink: 3.716 seconds   2691 unlinks/sec
+rank     1: unlink: 3.668 seconds   2726 unlinks/sec
+rank     2: unlink: 3.516 seconds   2844 unlinks/sec
+rank     3: unlink: 3.608 seconds   2772 unlinks/sec
+rank     4: unlink: 3.676 seconds   2720 unlinks/sec
+rank     5: unlink: 3.552 seconds   2815 unlinks/sec
+rank     6: unlink: 3.656 seconds   2735 unlinks/sec
+rank     7: unlink: 3.436 seconds   2910 unlinks/sec
+unlink  min  rank     7  3.436 seconds   2910 unlinks/sec
+unlink  max  rank     0  3.716 seconds   2691 unlinks/sec
+unlink  avg              3.603 seconds   2775 unlinks/sec
+unlink  total            3.716 seconds  22214 unlinks/sec
+
+rank     0: open: 3.436 seconds   2910 opens/sec
+rank     1: open: 3.908 seconds   2559 opens/sec
+rank     2: open: 3.396 seconds   2945 opens/sec
+rank     3: open: 3.868 seconds   2585 opens/sec
+rank     4: open: 3.308 seconds   3023 opens/sec
+rank     5: open: 3.244 seconds   3083 opens/sec
+rank     6: open: 3.440 seconds   2907 opens/sec
+rank     7: open: 3.184 seconds   3141 opens/sec
+open  min  rank     7  3.184 seconds   3141 opens/sec
+open  max  rank     1  3.908 seconds   2559 opens/sec
+open  avg              3.473 seconds   2879 opens/sec
+open  total            3.908 seconds  23152 opens/sec
+
+rank     0: close: 1.064 seconds   9398 closes/sec
+rank     1: close: 1.328 seconds   7530 closes/sec
+rank     2: close: 1.112 seconds   8993 closes/sec
+rank     3: close: 1.196 seconds   8361 closes/sec
+rank     4: close: 1.224 seconds   8170 closes/sec
+rank     5: close: 1.212 seconds   8251 closes/sec
+rank     6: close: 1.096 seconds   9124 closes/sec
+rank     7: close: 1.080 seconds   9259 closes/sec
+close  min  rank     0  1.064 seconds   9398 closes/sec
+close  max  rank     1  1.328 seconds   7530 closes/sec
+close  avg              1.164 seconds   8591 closes/sec
+close  total            1.328 seconds  69087 closes/sec
+
+rank     0: read: 109.532 seconds     91 MB/sec
+rank     1: read: 110.264 seconds     91 MB/sec
+rank     2: read: 92.352 seconds    108 MB/sec
+rank     3: read: 94.868 seconds    105 MB/sec
+rank     4: read: 92.572 seconds    108 MB/sec
+rank     5: read: 95.652 seconds    105 MB/sec
+rank     6: read: 92.884 seconds    108 MB/sec
+rank     7: read: 93.148 seconds    107 MB/sec
+read  min  rank     2  92.352 seconds    108 MB/sec
+read  max  rank     1  110.264 seconds     91 MB/sec
+read  avg              97.659 seconds    102 MB/sec
+read  total            110.264 seconds    823 MB/sec
+
+rank     0: write: 164.620 seconds     61 MB/sec
+rank     1: write: 165.512 seconds     60 MB/sec
+rank     2: write: 155.760 seconds     64 MB/sec
+rank     3: write: 160.368 seconds     62 MB/sec
+rank     4: write: 157.596 seconds     63 MB/sec
+rank     5: write: 160.560 seconds     62 MB/sec
+rank     6: write: 157.996 seconds     63 MB/sec
+rank     7: write: 161.216 seconds     62 MB/sec
+write  min  rank     2  155.760 seconds     64 MB/sec
+write  max  rank     1  165.512 seconds     60 MB/sec
+write  avg              160.453 seconds     62 MB/sec
+write  total            165.512 seconds    499 MB/sec
+
+Application 13073 resources: utime ~44s, stime ~27s

@@ -1,0 +1,9 @@
+#%Module
+#
+# @PACKAGE_NAME@ module
+#
+
+setenv DVS_VERSION @PACKAGE_VERSION@
+setenv DVS_INCLUDE_OPTS "-I@includedir@"
+
+prepend-path PE_PRODUCT_LIST DVS

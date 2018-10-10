@@ -1,0 +1,65 @@
+ioperf can be run with DVS-projected cluster file systems without any
+modifications to existing DVS mount points.
+
+However, if ioperf is to be run with a DVS-projected ram file systems (to
+better measure DVS performance without interference from the underlying
+cluster file system and backend storage), a privileged user will need to
+configure DVS mounts points for the ram file systems.  There are two
+potential ways to do this:
+
+  1. Edit the compute node /etc/fstab file on the SMW to add the new
+     DVS mount points, create directories for the new mount points in the
+     compute node ramfs, repackage the compute node ramfs with xtpackage,
+     create a new boot image with xtbootimg, and reboot the compute nodes
+     with the new boot image.
+
+     The new /etc/fstab entries should look something like this:
+
+        /tmp /ramtest0 dvs path=/ramtest0,nodename=c0-0c0s6n3,blksize=1048576
+        /tmp /ramtest1 dvs path=/ramtest1,nodename=c0-0c0s6n0,blksize=1048576
+
+     This DVS-mounts c0-0c0s6n3:/tmp to /ramtest0 and c0-0c0s6n0:/tmp to
+     /ramtest1 on the compute node.
+
+     Using the /etc/fstab examples above, the configuration steps on the SMW
+     would look like this, where $DIR is a site-specific value:
+
+        # cd /opt/xt-images/$DIR/compute
+        # vi ./etc/fstab
+        # mkdir ./ramtest0
+        # mkdir ./ramtest1
+        # xtpackage $DIR/compute
+        # xtbootimg -L /opt/xt-images/$DIR/compute/CNL0.load [insert \
+          system-specific paths here for other unified cpio components] \
+          -c /opt/xt-images/cpio/dvs_ramtest.cpio
+        # xtbounce -s all_comp
+        # xtcli boot CNL0 -o compute -i /opt/xt-images/cpio/dvs_ramtest.cpio \
+          all_comp
+
+  2. Add DVS mount points for the ram file systems dynamically.  This assumes
+     you have access to the compute node and is has a writable /tmp file
+     system.  To use something similar to the mount point examples listed
+     above, execute the following commands on the compute nodes:
+
+        # mkdir /tmp/ramtest0
+        # mkdir /tmp/ramtest1
+        # mount -t dvs -o "path=/tmp,nodename=c0-0c1s6n3,blksize=1048576" \
+          /tmp/ /tmp/ramtest0
+        # mount -t dvs -o "path=/tmp,nodename=c0-0c1s6n0,blksize=1048576" \
+          /tmp/ /tmp/ramtest1
+
+     This DVS-mounts c0-0c0s6n3:/tmp to /tmp/ramtest0 and c0-0c0s6n0:/tmp to
+     /tmp/ramtest1 on the compute node.
+ 
+     These steps could be done by aprun'ing a script as root, by using pdsh,
+     or by ssh'ing to a compute node and executing the commands manually.
+     Which is most appropriate is a site decision.
+
+     To clean up the compute nodes after you are finished, execute the
+     following commands on the compute nodes:
+
+	# umount /tmp/ramtest0
+	# umount /tmp/ramtest1
+	# rm -rf /tmp/ramtest0
+	# rm -rf /tmp/ramtest1
+

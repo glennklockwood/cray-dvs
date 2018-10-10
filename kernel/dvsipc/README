@@ -1,0 +1,31 @@
+
+External symbols from modules:
+
+	NONE
+
+Symbols exported:
+
+X	build_rma_list
+X	count_ipc_memory
+X	dump_request
+X	end_rma
+X	hb_all
+X	identity_valid
+X	ipc_get_params
+X	ipc_init
+X	ipc_rexec_helper
+X	ipc_rma_get
+X	ipc_rma_put
+X	ipc_term
+X	ipc_utility_call
+X	map_ipc_memory
+X	max_nodes
+X	msg0_thread
+X	send_ipc_callback
+X	send_ipc_reply
+X	send_ipc_request
+X	send_ipc_request_async
+X	setup_rma
+X	unmap_ipc_memory
+X	usi_callback
+X	wait_for_async_request

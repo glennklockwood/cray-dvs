@@ -1,0 +1,138 @@
+#!/bin/sh
+# Startup script for DVS.
+#
+# Copyright Cray Inc. All Right Reserved
+#
+#
+### BEGIN INIT INFO
+# Provides:          DVS
+# Required-Start:    $remote_fs
+# Required-Stop:
+# Default-Start:     2 3 5
+# Default-Stop:      0 6
+# Short-Description: DVS filesystem service
+# Description:       DVS provides a distributed filesystem service
+### END INIT INFO
+
+# Source function library
+if [ -f /etc/rc.status ]; then
+   . /etc/rc.status
+fi
+
+. @default_prefix@/etc/init.d/functions
+
+rc_reset
+
+PATH=${PATH}:/sbin:/usr/sbin
+
+LOCAL_BOOT=0
+
+CMD=${0##*/}
+
+ANSIBLE_ENABLED="@ansible_enabled@"
+
+#
+# Set the appropriate lower transport.
+#
+if isportals
+then
+    IPC_TRANSPORT=portals
+else
+    IPC_TRANSPORT=lnet
+fi
+
+start() {
+    #
+    # start/mount DVS
+    #
+
+    if [ "$ANSIBLE_ENABLED" == "no" ]; then
+        # Make sure it's not already running
+        if grep -wq '^dvspn' /proc/modules ; then
+            echo "DVS service already running"
+            rc_reset
+            rc_exit
+        fi
+
+        echo -n "Starting DVS service: "
+
+        # Create DVS device node
+        make_dev_uss
+
+        modload dvsproc ssiproc_max_nodes=${TOTAL_NODES}
+
+        seed_node_map
+
+        modload dvsipc_${IPC_TRANSPORT}
+        modload dvsipc
+        modload dvsutil
+        modload dvsof
+        modload dvspn
+    else
+        echo -n "Mounting DVS filesystems: "
+    fi
+    domounts
+    rc_status -v
+}
+
+stop() {
+    if [ "$ANSIBLE_ENABLED" == "no" ]; then
+        if [ "$1" != "cleanup" ]; then
+            # Make sure it's not already stopped
+            ps ax | grep -v grep | egrep "DVS-heartbeat|DVS-IPC|DVS-IPC_nak" > /dev/null
+            RETVAL=$?
+            if [ ${RETVAL} == 1 ] ; then
+                echo "DVS service already stopped"
+                rc_reset
+                rc_status
+                rc_exit
+            fi
+        fi
+
+        echo -n "Stopping DVS service: "
+    else
+        echo -n "Unmounting DVS filesystems: "
+    fi
+
+    do_unmount
+
+    if [ "$ANSIBLE_ENABLED" == "no" ]; then
+        /sbin/rmmod dvspn
+        /sbin/rmmod dvsof
+        /sbin/rmmod dvsutil
+        /sbin/rmmod dvsipc
+        /sbin/rmmod dvsipc_${IPC_TRANSPORT}
+        /sbin/rmmod dvsproc
+    fi
+
+    rc_status -v
+}
+
+case "$1" in
+	start)
+	    start
+	    ;;
+	stop)
+	    stop
+	    ;;
+	status)
+            echo -n "DVS service: "
+	    ps ax | grep -v grep | egrep "DVS-heartbeat|DVS-IPC" > /dev/null
+            RETVAL=$?
+            if [ ${RETVAL} == 0 ]; then
+                true
+            else
+                false
+            fi
+            rc_status -v
+	    ;;
+	restart)
+	    stop
+	    start
+	    ;;
+	*)
+	    echo $"Usage: $0 {start|stop|restart|status}"
+	    exit 1
+
+esac
+rc_exit
