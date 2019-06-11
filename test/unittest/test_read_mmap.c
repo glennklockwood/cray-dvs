@@ -29,8 +29,7 @@
 
 volatile unsigned long x;
 
-int
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
 	char *prog = basename(*argv);
 	char *name;
@@ -41,7 +40,8 @@ main(int argc, char **argv)
 	struct stat sb;
 	int i;
 
-	argc--; argv++;
+	argc--;
+	argv++;
 	if (argc < 1) {
 		fprintf(stderr, "Usage: %s filename [size [offset]]\n", prog);
 		return 1;
@@ -69,7 +69,8 @@ main(int argc, char **argv)
 	}
 	buf = mmap(0, siz, PROT_READ, MAP_SHARED, fn, off);
 	if (buf == MAP_FAILED) {
-		fprintf(stderr, "mmap(siz=%ld,off=%ld,READ) failed\n", siz, off);
+		fprintf(stderr, "mmap(siz=%ld,off=%ld,READ) failed\n", siz,
+			off);
 		perror(prog);
 		return 1;
 	}

@@ -14,8 +14,9 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License, 
- * version 2, along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License,
+ * version 2, along with this program.  If not, see
+ * <http://www.gnu.org/licenses/>.
  */
 
 /*
@@ -112,15 +113,8 @@
  *   -nofdatasync: Do not flush data from buffered cache to disk drives.
  */
 
-#define IOPERF_VERSION	"1.5"
-#define _GNU_SOURCE         /* See feature_test_macros(7) */
-
-/*
- * Define INCLUDE_MPI=0 to compile without MPI support.
- */
-#ifndef	INCLUDE_MPI
-#define	INCLUDE_MPI	1
-#endif
+#define IOPERF_VERSION "1.5"
+#define _GNU_SOURCE /* See feature_test_macros(7) */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -135,19 +129,23 @@
 #include <fcntl.h>
 #include <time.h>
 #include <errno.h>
-#if INCLUDE_MPI != 0
+
+/*
+ * MPI support only present when WITH_MPI is defined
+ */
+#ifdef WITH_MPI
 #include <mpi.h>
 #endif
 
-#define	ARG_BIG		0x01
-#define	ARG_NOCLEAN	0x02
-#define	ARG_CRRM	0x04
-#define	ARG_OPCL	0x08
-#define	ARG_READ	0x10
-#define	ARG_WRITE	0x20
-#define	ARG_STATFS	0x40
-#define	ARG_INIT	0x80
-#define ARG_FDATASYNC   0x100
+#define ARG_BIG 0x01
+#define ARG_NOCLEAN 0x02
+#define ARG_CRRM 0x04
+#define ARG_OPCL 0x08
+#define ARG_READ 0x10
+#define ARG_WRITE 0x20
+#define ARG_STATFS 0x40
+#define ARG_INIT 0x80
+#define ARG_FDATASYNC 0x100
 
 int iter;
 int big;
@@ -158,23 +156,22 @@ int cleanup = 1;
 int init_file = 0;
 int fdata_sync = 1;
 int verbose = 0;
-int mpi_rank = 0;		/* mpi world rank */
-int mpi_size = 1;		/* mpi world size */
+int mpi_rank = 0; /* mpi world rank */
+int mpi_size = 1; /* mpi world size */
 
 struct option args[] = {
-	{"big", no_argument, NULL, ARG_BIG},
-	{"noclean", no_argument, NULL, ARG_NOCLEAN},
-	{"init", no_argument, NULL, ARG_INIT},
-	{"crrm", no_argument, NULL, ARG_CRRM},
-	{"opcl", no_argument, NULL, ARG_OPCL},
-	{"statfs", no_argument, NULL, ARG_STATFS},
-	{"read", no_argument, NULL, ARG_READ},
-	{"write", no_argument, NULL, ARG_WRITE},
-	{"nofdatasync", no_argument, NULL, ARG_FDATASYNC},
+	{ "big", no_argument, NULL, ARG_BIG },
+	{ "noclean", no_argument, NULL, ARG_NOCLEAN },
+	{ "init", no_argument, NULL, ARG_INIT },
+	{ "crrm", no_argument, NULL, ARG_CRRM },
+	{ "opcl", no_argument, NULL, ARG_OPCL },
+	{ "statfs", no_argument, NULL, ARG_STATFS },
+	{ "read", no_argument, NULL, ARG_READ },
+	{ "write", no_argument, NULL, ARG_WRITE },
+	{ "nofdatasync", no_argument, NULL, ARG_FDATASYNC },
 };
 
-void
-usage(void)
+void usage(void)
 {
 	printf("usage: ioperf [-p path_prefix] [-m num_mountpoints] "
 	       "[-d directory_prefix] [-o offset] [-s stride] -f file -b blksize -i iters "
@@ -182,29 +179,25 @@ usage(void)
 	       "[-opcl] [-crrm] [-statfs]\n");
 }
 
-void
-perrorx(char *string)
+void perrorx(char *string)
 {
 	perror(string);
 	exit(1);
 }
 
-void
-barrier(void)
+void barrier(void)
 {
 #if defined(MPI_VERSION)
 	MPI_Barrier(MPI_COMM_WORLD);
 #endif
 }
 
-int
-start_timer(struct timeval *time_start)
+int start_timer(struct timeval *time_start)
 {
 	return gettimeofday(time_start, NULL);
 }
 
-void
-stop_timer(struct timeval *time_stop, int ret_start)
+void stop_timer(struct timeval *time_stop, int ret_start)
 {
 	int ret_stop;
 
@@ -213,29 +206,28 @@ stop_timer(struct timeval *time_stop, int ret_start)
 		perrorx("timing error");
 }
 
-void
-calc_timings(struct timeval *time_start, struct timeval *time_stop, int i,
-	     double *total)
+void calc_timings(struct timeval *time_start, struct timeval *time_stop, int i,
+		  double *total)
 {
 	struct timeval time_diff;
 	double time;
 
 	timersub(time_stop, time_start, &time_diff);
 	time = (((double)time_diff.tv_sec * (double)1000000) +
-						(double)time_diff.tv_usec);
+		(double)time_diff.tv_usec);
 	if (i == 0)
 		*total = 0;
 	*total += time;
 }
 
 #if defined(MPI_VERSION)
-void
-print_summary(const char *name, double elapsed, double count, const char *units)
+void print_summary(const char *name, double elapsed, double count,
+		   const char *units)
 {
 	double *tlist;
 
 	if (mpi_rank == 0) {
-		tlist = (double *) malloc(mpi_size * sizeof(double));
+		tlist = (double *)malloc(mpi_size * sizeof(double));
 		if (tlist == NULL)
 			perrorx("malloc error");
 	}
@@ -251,8 +243,9 @@ print_summary(const char *name, double elapsed, double count, const char *units)
 		for (i = 0; i < mpi_size; i++) {
 			if (verbose) {
 				printf("rank %5d: %s: %3.3f seconds  "
-				       "%5.0f %s/sec\n", i, name, tlist[i],
-				       count / tlist[i], units);
+				       "%5.0f %s/sec\n",
+				       i, name, tlist[i], count / tlist[i],
+				       units);
 			}
 			if (tlist[i] < min_time) {
 				min_time = tlist[i];
@@ -267,10 +260,10 @@ print_summary(const char *name, double elapsed, double count, const char *units)
 		}
 		avg_time = time_sum / mpi_size;
 		free(tlist);
-		printf("%s  min  rank %5d  %3.3f seconds  %5.0f %s/sec\n",
-		       name, min_rank, min_time, count / min_time, units);
-		printf("%s  max  rank %5d  %3.3f seconds  %5.0f %s/sec\n",
-		       name, max_rank, max_time, count / max_time, units);
+		printf("%s  min  rank %5d  %3.3f seconds  %5.0f %s/sec\n", name,
+		       min_rank, min_time, count / min_time, units);
+		printf("%s  max  rank %5d  %3.3f seconds  %5.0f %s/sec\n", name,
+		       max_rank, max_time, count / max_time, units);
 		printf("%s  avg              %3.3f seconds  %5.0f %s/sec\n",
 		       name, avg_time, count / avg_time, units);
 		printf("%s  total            %3.3f seconds  %5.0f %s/sec\n\n",
@@ -279,8 +272,8 @@ print_summary(const char *name, double elapsed, double count, const char *units)
 }
 #endif
 
-void
-print_timing(const char *name, double time, double count, const char *units)
+void print_timing(const char *name, double time, double count,
+		  const char *units)
 {
 #if defined(MPI_VERSION)
 	print_summary(name, time, count, units);
@@ -290,14 +283,13 @@ print_timing(const char *name, double time, double count, const char *units)
 #endif
 }
 
-void
-do_crrm(char *file)
+void do_crrm(char *file)
 {
 	struct timeval time_start, time_stop;
-	double total_create, total_unlink;
+	double total_create = 0.0, total_unlink = 0.0;
 	int i, fd, timer_ret, ret;
 
-	(void) unlink(file);
+	(void)unlink(file);
 
 	barrier();
 	for (i = 0; i < iter; i++) {
@@ -322,22 +314,19 @@ do_crrm(char *file)
 	barrier();
 
 	if (!cleanup)
-		(void) creat(file, 0666);
+		(void)creat(file, 0666);
 
-	print_timing("create", total_create / 1000000, (double) iter,
-		     "creates");
-	print_timing("unlink", total_unlink / 1000000, (double) iter,
-		     "unlinks");
+	print_timing("create", total_create / 1000000, (double)iter, "creates");
+	print_timing("unlink", total_unlink / 1000000, (double)iter, "unlinks");
 }
 
-void
-do_opcl(char *file)
+void do_opcl(char *file)
 {
 	struct timeval time_start, time_stop;
-	double total_open, total_close;
+	double total_open = 0.0, total_close = 0.0;
 	int i, fd, timer_ret, ret;
 
-	fd = open(file, O_CREAT|O_RDWR, 0666);
+	fd = open(file, O_CREAT | O_RDWR, 0666);
 	if (fd == -1)
 		perrorx("open error");
 	close(fd);
@@ -345,7 +334,7 @@ do_opcl(char *file)
 	barrier();
 	for (i = 0; i < iter; i++) {
 		timer_ret = start_timer(&time_start);
-		fd = open(file, O_CREAT|O_RDWR, 0666);
+		fd = open(file, O_CREAT | O_RDWR, 0666);
 		stop_timer(&time_stop, timer_ret);
 		if (fd == -1)
 			perrorx("open error");
@@ -365,19 +354,18 @@ do_opcl(char *file)
 	if (cleanup)
 		unlink(file);
 
-	print_timing("open", total_open / 1000000, (double) iter, "opens");
-	print_timing("close", total_close / 1000000, (double) iter, "closes");
+	print_timing("open", total_open / 1000000, (double)iter, "opens");
+	print_timing("close", total_close / 1000000, (double)iter, "closes");
 }
 
-void
-do_statfs(char *file)
+void do_statfs(char *file)
 {
 	struct timeval time_start, time_stop;
-	double total_statfs;
+	double total_statfs = 0.0;
 	int i, fd, timer_ret, ret;
 	struct statfs buf;
 
-	fd = open(file, O_CREAT|O_RDWR, 0666);
+	fd = open(file, O_CREAT | O_RDWR, 0666);
 	if (fd == -1)
 		perrorx("open error");
 	close(fd);
@@ -394,11 +382,10 @@ do_statfs(char *file)
 	}
 	barrier();
 
-	print_timing("statfs", total_statfs / 1000000, (double) iter, "statfs");
+	print_timing("statfs", total_statfs / 1000000, (double)iter, "statfs");
 }
 
-void
-do_read_write(char *file, char *buf, int type)
+void do_read_write(char *file, char *buf, int type)
 {
 	struct timeval time_start, time_stop;
 	double total;
@@ -412,7 +399,7 @@ do_read_write(char *file, char *buf, int type)
 	 */
 	barrier();
 
-	fd = open(file, O_CREAT|O_RDWR, 0666);
+	fd = open(file, O_CREAT | O_RDWR, 0666);
 	if (fd == -1)
 		perrorx("open error");
 
@@ -444,8 +431,9 @@ do_read_write(char *file, char *buf, int type)
 
 	barrier();
 
-        /*
-	 * Flush data from buffered cache to disk devices if data sync is enabled.
+	/*
+	 * Flush data from buffered cache to disk devices if data sync is
+	 * enabled.
 	 */
 	if (fdata_sync) {
 		if (fdatasync(fd) < 0)
@@ -485,11 +473,11 @@ do_read_write(char *file, char *buf, int type)
 		     "MB");
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 	int i, c, ret, mounts = 0, unique = 0, arg = 0;
-	char *path = NULL, *dir = NULL, *file = NULL, *buf, *tmp, *dir_path= NULL;
+	char *path = NULL, *dir = NULL, *file = NULL, *buf = NULL, *tmp,
+	     *dir_path = NULL;
 	struct timeval tim;
 	struct timezone tz;
 
@@ -498,9 +486,9 @@ main(int argc, char *argv[])
 	MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 #endif
-	while ((c = getopt_long_only(argc, argv, "p:d:f:b:i:m:o:s:uv", args, NULL))
-	        							      != -1) {
-		switch(c) {
+	while ((c = getopt_long_only(argc, argv, "p:d:f:b:i:m:o:s:uv", args,
+				     NULL)) != -1) {
+		switch (c) {
 		case 'p':
 			path = optarg;
 			break;
@@ -563,24 +551,27 @@ main(int argc, char *argv[])
 		}
 	}
 	if (file == NULL || iter <= 0 || !arg || mounts < 0 ||
-	    ((arg & (ARG_READ|ARG_WRITE)) && (blksize <= 0))) {
+	    ((arg & (ARG_READ | ARG_WRITE)) && (blksize <= 0))) {
 		usage();
 		exit(1);
 	}
 
-	if (!(arg & (ARG_CRRM|ARG_OPCL|ARG_READ|ARG_WRITE|ARG_STATFS))) {
-		arg |= (ARG_CRRM|ARG_OPCL|ARG_READ|ARG_WRITE|ARG_STATFS);
+	if (!(arg &
+	      (ARG_CRRM | ARG_OPCL | ARG_READ | ARG_WRITE | ARG_STATFS))) {
+		arg |= (ARG_CRRM | ARG_OPCL | ARG_READ | ARG_WRITE |
+			ARG_STATFS);
 	}
 
-	if (arg & (ARG_READ|ARG_WRITE)) {
-		ret = posix_memalign((void**)&buf, getpagesize(), blksize);
+	if (arg & (ARG_READ | ARG_WRITE)) {
+		ret = posix_memalign((void **)&buf, getpagesize(), blksize);
 		if (ret)
 			perrorx("posix_memalign error");
 		memset(buf, 'E', blksize);
 	}
 
 	if (stride) {
-		stride -= blksize;  /* the amount to skip after you write a block */
+		stride -= blksize; /* the amount to skip after you write a block
+				    */
 	}
 
 	if (unique) {
@@ -615,29 +606,25 @@ main(int argc, char *argv[])
 	}
 
 	if (path != NULL) {
-		ret = asprintf(&file, "%s%d/%s",
-				path,
-				mounts ? (mpi_rank % mounts) : 0,
-				file);
+		ret = asprintf(&file, "%s%d/%s", path,
+			       mounts ? (mpi_rank % mounts) : 0, file);
 		if (ret < 0)
 			perrorx("asprintf error");
 	}
 	if ((dir != NULL) && (path != NULL)) {
-		ret = asprintf(&dir_path, "%s%d/%s",
-					path,
-					mounts ? (mpi_rank % mounts) : 0,
-					dir);
+		ret = asprintf(&dir_path, "%s%d/%s", path,
+			       mounts ? (mpi_rank % mounts) : 0, dir);
 		if (ret < 0)
 			perrorx("asprintf error");
 	}
 	/* create dir */
-	(void) mkdir(dirname(dir_path), 0755);
+	(void)mkdir(dirname(dir_path), 0755);
 
 	if (asprintf(&tmp, "%s", file) < 0)
 		perrorx("asprintf error");
 
 	/* Create a file */
-	(void) mkdir(dirname(tmp), 0755);
+	(void)mkdir(dirname(tmp), 0755);
 
 	if (mpi_rank == 0) {
 		gettimeofday(&tim, &tz);

@@ -32,25 +32,22 @@
 #include <linux/fs.h>
 #include <linux/fs_struct.h>
 #include <linux/uidgid.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
+#include <linux/cred.h>
 #include <linux/sched/rt.h>
-#endif
+
+#include <dvs/dvs_config.h>
 
 #include "common/kernel/kernel_interface.h"
 
-/* 
+/*
  * Define a jobid for placing messages in the correct input queue. Use
- * apid if available; use the uid if not. Set the high order bit to 
+ * apid if available; use the uid if not. Set the high order bit to
  * avoid collisions between the two id types.
  */
 #define CTX_JOBID_UID_MASK ((u64)0x1 << 63)
 #define JOBID_APID(apid) ((apid))
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
-#define JOBID_UID(uid) ((uid) | CTX_JOBID_UID_MASK)
-#else
 #define JOBID_UID(uid) ((__kuid_val(uid)) | CTX_JOBID_UID_MASK)
-#endif
 
 /*
  * Context passed between client and server.  The following is a partial
@@ -58,32 +55,26 @@
  *    tgid - the kernel uses current->tgid for file locking operations
  *
  */
-
-#define DVS_OTW_GROUPS	(NGROUPS_SMALL * 4)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+/* NGROUPS_SMALL has been removed with SLES 15 */
+#define NGROUPS_SMALL 32
+#endif
+#define DVS_OTW_GROUPS (NGROUPS_SMALL * 4)
 
 struct usicontext {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
-	uid_t uid,euid,suid,fsuid;
-	gid_t gid,egid,sgid,fsgid;
-	gid_t	groups[DVS_OTW_GROUPS];
-#else
-	kuid_t uid,euid,suid,fsuid;
-	kgid_t gid,egid,sgid,fsgid;
+	kuid_t uid, euid, suid, fsuid;
+	kgid_t gid, egid, sgid, fsgid;
 	kgid_t groups[DVS_OTW_GROUPS];
-#endif
 	int ngroups;
-        struct group_info *group_info;
-	kernel_cap_t   cap_effective, cap_inheritable, cap_permitted;
+	struct group_info *group_info;
+	kernel_cap_t cap_effective, cap_inheritable, cap_permitted;
 	unsigned securebits;
-#ifdef CONFIG_CRAY_ACCOUNTING
-        u64 jobid;
-	u64 csa_apid;
-#else
-# if defined(WHITEBOX) || defined(RHEL_RELEASE_CODE) /* bug 823318 */
+#ifndef WITH_LEGACY_CRAY
 	u64 jobid;
-# else
-# error CONFIG_CRAY_ACCOUNTING is required for message queue id
-# endif
+#endif
+#ifdef CONFIG_CRAY_ACCOUNTING
+	u64 csa_apid;
+#endif
 #endif
 	int umask;
 	int node;
@@ -95,12 +86,13 @@ struct usicontext {
 	const struct cred *cred;
 };
 
-#define CRED	current->cred
+#define CRED current->cred
 
 /*
  * Capture (copy) context (client)
  */
-static inline void capture_context(struct usicontext *ctx) {
+static inline void capture_context(struct usicontext *ctx)
+{
 	ctx->uid = CRED->uid;
 	ctx->euid = CRED->euid;
 	ctx->suid = CRED->suid;
@@ -111,25 +103,31 @@ static inline void capture_context(struct usicontext *ctx) {
 	ctx->fsgid = CRED->fsgid;
 
 	get_group_info(CRED->group_info);
-	ctx->ngroups = (CRED->group_info->ngroups > DVS_OTW_GROUPS)
-			? DVS_OTW_GROUPS : CRED->group_info->ngroups;
-	memcpy(ctx->groups, CRED->group_info->blocks[0], ctx->ngroups * sizeof(gid_t));
+	ctx->ngroups = (CRED->group_info->ngroups > DVS_OTW_GROUPS) ?
+			       DVS_OTW_GROUPS :
+			       CRED->group_info->ngroups;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
+	memcpy(ctx->groups, CRED->group_info->blocks[0],
+	       ctx->ngroups * sizeof(gid_t));
+#else
+	memcpy(ctx->groups, CRED->group_info->gid,
+	       ctx->ngroups * sizeof(kgid_t));
+#endif
 	put_group_info(CRED->group_info);
 
 	ctx->cap_effective = CRED->cap_effective;
 	ctx->cap_inheritable = CRED->cap_inheritable;
 	ctx->cap_permitted = CRED->cap_permitted;
 	ctx->securebits = CRED->securebits;
-#ifdef CONFIG_CRAY_ACCOUNTING
-        ctx->jobid = (current->csa_apid ? 
-                      JOBID_APID(current->csa_apid) : JOBID_UID(CRED->uid));
+#if defined(WITH_LEGACY_CRAY) && defined(CONFIG_CRAY_ACCOUNTING)
 	ctx->csa_apid = current->csa_apid;
-#else
-# if defined(WHITEBOX) || defined(RHEL_RELEASE_CODE) /* bug 823318 */
+/* bug 823318 */
+#ifdef RHEL_RELEASE_CODE
 	ctx->jobid = JOBID_UID(CRED->uid);
-# else
-# error CONFIG_CRAY_ACCOUNTING is required for message queue id
-# endif
+#else
+	ctx->jobid = (current->csa_apid ? JOBID_APID(current->csa_apid) :
+					  JOBID_UID(CRED->uid));
+#endif
 #endif
 
 	if (current->fs)
@@ -147,7 +145,8 @@ static inline void capture_context(struct usicontext *ctx) {
 /*
  * Set root context.
  */
-static inline void set_root_context(struct usicontext *ctx) {
+static inline void set_root_context(struct usicontext *ctx)
+{
 	ctx->uid = GLOBAL_ROOT_UID;
 	ctx->suid = GLOBAL_ROOT_UID;
 	ctx->euid = GLOBAL_ROOT_UID;
@@ -172,13 +171,8 @@ static inline void set_root_context(struct usicontext *ctx) {
 	ctx->rlim[RLIMIT_RSS].rlim_max = RLIM_INFINITY;
 	ctx->rlim[RLIMIT_NPROC].rlim_cur = 0;
 	ctx->rlim[RLIMIT_NPROC].rlim_max = 0;
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,0,0) && !defined(RHEL_RELEASE_CODE) /* bug 823318 */
-	ctx->rlim[RLIMIT_NOFILE].rlim_cur = INR_OPEN;
-	ctx->rlim[RLIMIT_NOFILE].rlim_max = INR_OPEN;
-#else
-	ctx->rlim[RLIMIT_NOFILE].rlim_cur = INR_OPEN_CUR;
-	ctx->rlim[RLIMIT_NOFILE].rlim_max = INR_OPEN_MAX;
-#endif
+	ctx->rlim[RLIMIT_NOFILE].rlim_cur = _RLIM_CUR;
+	ctx->rlim[RLIMIT_NOFILE].rlim_max = _RLIM_MAX;
 	ctx->rlim[RLIMIT_MEMLOCK].rlim_cur = RLIM_INFINITY;
 	ctx->rlim[RLIMIT_MEMLOCK].rlim_max = RLIM_INFINITY;
 	ctx->rlim[RLIMIT_AS].rlim_cur = RLIM_INFINITY;
@@ -193,7 +187,8 @@ static inline void set_root_context(struct usicontext *ctx) {
 /*
  * Save current context and then update current context with new
  */
-static inline int push_context(struct usicontext *saved, struct usicontext *new) {
+static inline int push_context(struct usicontext *saved, struct usicontext *new)
+{
 	struct cred *newcred;
 	struct group_info *newgroup;
 
@@ -212,52 +207,59 @@ static inline int push_context(struct usicontext *saved, struct usicontext *new)
 	saved->securebits = CRED->securebits;
 	saved->umask = current->fs->umask;
 	saved->leader = current->signal->leader;
-#ifdef CONFIG_CRAY_ACCOUNTING
+#if defined(WITH_LEGACY_CRAY) && defined(CONFIG_CRAY_ACCOUNTING)
 	saved->csa_apid = current->csa_apid;
 #endif
 	saved->tgid = current->tgid;
 	saved->blocked = current->blocked;
-	memcpy(saved->rlim, current->signal->rlim, sizeof(current->signal->rlim));
+	memcpy(saved->rlim, current->signal->rlim,
+	       sizeof(current->signal->rlim));
 	saved->nice = kernel_get_task_nice(current);
 
 	newcred = prepare_creds();
-        if (!newcred) {
-                return -ENOMEM;
-        }
+	if (!newcred) {
+		return -ENOMEM;
+	}
 
-        newcred->uid = new->uid;
-        newcred->euid = new->euid;
-        newcred->suid = new->suid;
-        newcred->fsuid = new->fsuid;
-        newcred->gid = new->gid;
-        newcred->egid = new->egid;
-        newcred->sgid = new->sgid;
-        newcred->fsgid = new->fsgid;
+	newcred->uid = new->uid;
+	newcred->euid = new->euid;
+	newcred->suid = new->suid;
+	newcred->fsuid = new->fsuid;
+	newcred->gid = new->gid;
+	newcred->egid = new->egid;
+	newcred->sgid = new->sgid;
+	newcred->fsgid = new->fsgid;
 
-        newgroup = groups_alloc(new->ngroups);
+	newgroup = groups_alloc(new->ngroups);
 	if (!newgroup) {
 		abort_creds(newcred);
 		return -ENOMEM;
 	}
-        memcpy(newgroup->blocks[0], new->groups, newgroup->ngroups * sizeof(gid_t));
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
+	memcpy(newgroup->blocks[0], new->groups,
+	       newgroup->ngroups * sizeof(gid_t));
+#else
+	memcpy(newgroup->gid, new->groups, newgroup->ngroups * sizeof(kgid_t));
+#endif
 	set_groups(newcred, newgroup);
 	put_group_info(newgroup);
 
-        newcred->cap_effective = new->cap_effective;
-        newcred->cap_inheritable = new->cap_inheritable;
-        newcred->cap_permitted = new->cap_permitted;
-        newcred->securebits = new->securebits;
+	newcred->cap_effective = new->cap_effective;
+	newcred->cap_inheritable = new->cap_inheritable;
+	newcred->cap_permitted = new->cap_permitted;
+	newcred->securebits = new->securebits;
 
-        saved->cred = override_creds(newcred);
-        put_cred(newcred);
+	saved->cred = override_creds(newcred);
+	put_cred(newcred);
 	current->fs->umask = new->umask;
 	current->signal->leader = new->leader;
-#ifdef CONFIG_CRAY_ACCOUNTING
+#if defined(WITH_LEGACY_CRAY) && defined(CONFIG_CRAY_ACCOUNTING)
 	current->csa_apid = new->csa_apid;
 #endif
 	current->tgid = new->tgid;
 	current->blocked = new->blocked;
-	memcpy(current->signal->rlim, &new->rlim, sizeof(current->signal->rlim));
+	memcpy(current->signal->rlim, &new->rlim,
+	       sizeof(current->signal->rlim));
 
 	/*
 	 * Increase RLIMIT_NOFILE.  We only want to enforce open file limits
@@ -270,24 +272,24 @@ static inline int push_context(struct usicontext *saved, struct usicontext *new)
 		current->signal->rlim[RLIMIT_NOFILE].rlim_cur = 16384;
 	kernel_set_task_nice(current, new->nice);
 
-        return 0;
+	return 0;
 }
 
 /*
  * Restore saved context
  */
-static inline void pop_context(struct usicontext *saved) {
-        revert_creds(saved->cred);
+static inline void pop_context(struct usicontext *saved)
+{
+	revert_creds(saved->cred);
 
 	current->fs->umask = saved->umask;
 	current->signal->leader = saved->leader;
-#ifdef CONFIG_CRAY_ACCOUNTING
+#if defined(WITH_LEGACY_CRAY) && defined(CONFIG_CRAY_ACCOUNTING)
 	current->csa_apid = saved->csa_apid;
 #endif
 	current->tgid = saved->tgid;
 	current->blocked = saved->blocked;
-	memcpy(current->signal->rlim, saved->rlim, sizeof(current->signal->rlim));
+	memcpy(current->signal->rlim, saved->rlim,
+	       sizeof(current->signal->rlim));
 	kernel_set_task_nice(current, saved->nice);
 }
-
-#endif

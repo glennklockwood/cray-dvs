@@ -1,0 +1,136 @@
+diff --git a/kernel/dvsproc/sys_setup.c b/kernel/dvsproc/sys_setup.c
+index 8beeebab..56ded205 100644
+--- a/kernel/dvsproc/sys_setup.c
++++ b/kernel/dvsproc/sys_setup.c
+@@ -74,6 +74,7 @@ EXPORT_SYMBOL(quiesce_barrier_rwsem);
+ static const char patches[] = "\0"
+                               /* PATCH START */
+                               "t1000-sys-fs-dvs-patches.t\0"
+                               "t1001-sys-fs-dvs-patches-test.t\0"
++                              "t1002-limit-dvs-resources\0"
+                               /* PATCH END */
+                               "\0";
+
+diff --git include/dvs/dvs_lnetconfig.h include/dvs/dvs_lnetconfig.h
+index 284292f..9c227e0 100644
+--- a/include/dvs/dvs_lnetconfig.h
++++ b/include/dvs/dvs_lnetconfig.h
+@@ -17,6 +17,8 @@
+  * along with this program; if not, see <http://www.gnu.org/licenses/>.
+  */
+ 
++#define DVS_MAX_PAYLOAD (1024*64)
++
+ #define LNET_VERSION_CODE(major, minor, patch, fix)           \
+     (((major) << 24) + ((minor) << 16) + ((patch) << 8) + (fix))
+ 
+diff --git kernel/dvsipc/dvsipc_hal/dvsipc.c kernel/dvsipc/dvsipc_hal/dvsipc.c
+index 9a402b0..e769c6b 100644
+--- a/kernel/dvsipc/dvsipc_hal/dvsipc.c
++++ b/kernel/dvsipc/dvsipc_hal/dvsipc.c
+@@ -193,15 +193,15 @@ typedef struct dvs_config_params {
+ static dvs_config_params_t dvs_config_params[2] =
+ {
+ 	{ /*client */
+-		.msg_threads = 4,
+-		.max_msg_threads = 16,
++		.msg_threads = 1,
++		.max_msg_threads = 1,
+ 		.rsv_bufs = 4,
+-		.msg_per_buf =8,
+-		.tx_credits = 32,
++		.msg_per_buf =1,
++		.tx_credits = 1024,
+ 		.msgq_init_free_qhdrs = 1,
+ 		.msgq_max_free_qhdrs = 1,
+-		.buf_limit = 0,
+-		.buf_timeout = 0,
++		.buf_limit = 1024*1024*2,
++		.buf_timeout = 2,
+ 		.send_rca_event = 0
+ 	},
+ 	{ /* server */
+diff --git kernel/dvsipc/dvsipc_hal/dvsipc.h kernel/dvsipc/dvsipc_hal/dvsipc.h
+index 1fa625f..866c65b 100644
+--- a/kernel/dvsipc/dvsipc_hal/dvsipc.h
++++ b/kernel/dvsipc/dvsipc_hal/dvsipc.h
+@@ -172,7 +172,7 @@ extern int dvsipc_single_msg_queue;
+ 
+ #define DVSIPC_RESEND_LIMIT        1000     /* Number of nak/resends per tx */
+ 
+-#define DVSIPC_MSG_THREAD_LIMIT    1000     /* Limit on message threads */
++#define DVSIPC_MSG_THREAD_LIMIT    4     /* Limit on message threads */
+ 
+ #define DVSIPC_INVALID_NODE        (uint64_t)(~0)
+ 
+diff --git kernel/dvsipc/dvsipc_hal/dvsipc_lnet.c kernel/dvsipc/dvsipc_hal/dvsipc_lnet.c
+index b46d379..eb2528a 100644
+--- a/kernel/dvsipc/dvsipc_hal/dvsipc_lnet.c
++++ b/kernel/dvsipc/dvsipc_hal/dvsipc_lnet.c
+@@ -1736,7 +1736,7 @@ wait_for_rma(lnet_rma_info_t *ri, int timeout)
+ void
+ lnet_rma_wait(rma_info_t *rip)
+  {
+-     int ntx = (rip->length + LNET_MAX_PAYLOAD - 1) / LNET_MAX_PAYLOAD;
++     int ntx = (rip->length + DVS_MAX_PAYLOAD - 1) / DVS_MAX_PAYLOAD;
+      lnet_rma_info_t *lrip = rip->transport_handle;
+      int i;
+ 
+@@ -1769,7 +1769,7 @@ lnet_rma(uint64_t node, char *to, char *from, ssize_t length,
+     __u64 match = (__u64)rmasp->handle;
+     ssize_t total_length;
+     lnet_rma_info_t *lri, *rip;
+-    int ntx = (length + LNET_MAX_PAYLOAD - 1) / LNET_MAX_PAYLOAD;
++    int ntx = (length + DVS_MAX_PAYLOAD - 1) / DVS_MAX_PAYLOAD;
+     int ret = 0, i;
+     int cleanup = 0;
+ 
+@@ -1797,7 +1797,7 @@ lnet_rma(uint64_t node, char *to, char *from, ssize_t length,
+ 
+     /*
+      * Break up the RMA operation if necessary. LNet limits valid
+-     * PUT operation to a maximum size of LNET_MAX_PAYLOAD.
++     * PUT operation to a maximum size of DVS_MAX_PAYLOAD.
+      */
+     total_length = 0;
+     for (i=0; i<ntx; i++) {
+@@ -1807,7 +1807,7 @@ lnet_rma(uint64_t node, char *to, char *from, ssize_t length,
+         rip->retval = 0;
+         rip->rma_type = ri->rma_type;
+         lnet_invalidate_md_handle(&rip->mdh);
+-        rip->length = txlen = MIN(length, LNET_MAX_PAYLOAD);
++        rip->length = txlen = MIN(length, DVS_MAX_PAYLOAD);
+         rip->lnode = rmasp->node;
+ 
+         sema_init(&rip->sema, 0);
+@@ -2033,7 +2033,7 @@ dvs_lnet_init(uint64_t *nodeidp, dvsipc_upper_api_t *upper, ssize_t *max_msg_siz
+ 
+     upper_api = upper;
+     ipc_num_mds = num_mds;
+-    *max_msg_size = LNET_MAX_PAYLOAD;
++    *max_msg_size = DVS_MAX_PAYLOAD;
+     max_transport_msg_pages = *max_msg_size >> PAGE_CACHE_SHIFT;
+ 
+     /* # dirty pages before writeback - 8Mb */
+diff --git kernel/dvsof/dvsofclient.c kernel/dvsof/dvsofclient.c
+index 354dbc1..c1633ef 100644
+--- a/kernel/dvsof/dvsofclient.c
++++ b/kernel/dvsof/dvsofclient.c
+@@ -1658,7 +1658,7 @@ static ssize_t uread2 (struct file *fp, struct inode *ip, char *buf,
+ 		printk(KERN_ERR "DVS: uread2: max file buffer exceeded\n");
+ 		rval = -EINVAL;
+ 		goto done;
+-	} else if ((piggyback > MAX_FILE_PAYLOAD) || (fp->f_flags & O_DIRECT)) {
++	} else if ((piggyback > 0) || (fp->f_flags & O_DIRECT)) {
+ 		rma_handle = map_ipc_memory(buf, size, READ);
+ 		if (IS_ERR(rma_handle)) {
+ 			rval = PTR_ERR(rma_handle);
+@@ -2196,7 +2196,7 @@ static ssize_t uwrite2 (struct file *fp, struct inode *ip, const char *buf, size
+ 		printk(KERN_ERR "DVS: uwrite2: max file buffer exceeded\n");
+ 		rval = -EINVAL;
+ 		goto done;
+-	} else if ((piggyback > MAX_FILE_PAYLOAD) || (fp->f_flags & O_DIRECT)) {
++	} else if ((piggyback > 0) || (fp->f_flags & O_DIRECT)) {
+ 		rma_handle = map_ipc_memory((char *)buf, size, WRITE);
+ 		if (IS_ERR(rma_handle)) {
+ 			rval = PTR_ERR(rma_handle);

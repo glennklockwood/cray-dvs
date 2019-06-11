@@ -1,0 +1,4 @@
+*.tfstate*
+.terraform
+results
+results.tar.gz

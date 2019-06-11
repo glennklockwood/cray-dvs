@@ -36,8 +36,8 @@ ht_t *ht_init(int32_t nbuckets)
 		return NULL;
 	}
 
-	new_ht = (ht_t *)kmalloc_ssi(sizeof(ht_t) + (nbuckets *
-				sizeof(ht_bucket_t *)), GFP_KERNEL);
+	new_ht = (ht_t *)kmalloc_ssi(
+		sizeof(ht_t) + (nbuckets * sizeof(ht_bucket_t *)), GFP_KERNEL);
 	if (new_ht != NULL) {
 		new_ht->ht_nbuckets = nbuckets;
 		rwlock_init(&new_ht->ht_lock);
@@ -93,14 +93,16 @@ int8_t ht_insert_data(ht_t *ht, int64_t key, char *string, void *data)
 
 	if (ht == NULL || data == NULL) {
 		printk(KERN_ERR "DVS: ht_insert_data: invalid input: ht=0x%p "
-		       "key=0x%llx data=0x%p\n", ht, key, data);
+				"key=0x%llx data=0x%p\n",
+		       ht, key, data);
 		return 0;
 	}
 
 	ht_index = ht_hash(key, ht);
 
 	new_htb = (ht_bucket_t *)kmalloc_ssi(sizeof(ht_bucket_t), GFP_KERNEL);
-	if (!new_htb) return 0;
+	if (!new_htb)
+		return 0;
 
 	new_htb->htb_string = kmalloc_ssi(strlen(string) + 1, GFP_KERNEL);
 	if (!new_htb->htb_string) {
@@ -111,7 +113,11 @@ int8_t ht_insert_data(ht_t *ht, int64_t key, char *string, void *data)
 	new_htb->htb_key = key;
 	memcpy(new_htb->htb_string, string, strlen(string) + 1);
 	new_htb->htb_prev_bucket = NULL;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
 	new_htb->htb_time = CURRENT_TIME;
+#else
+	getnstimeofday(&new_htb->htb_time);
+#endif
 
 	write_lock_irqsave(&ht->ht_lock, flags);
 	if (ht->ht_bucket[ht_index] == NULL) {
@@ -142,7 +148,8 @@ int8_t ht_update_data(ht_t *ht, int64_t key, char *string)
 
 	if (ht == NULL) {
 		printk(KERN_ERR "DVS: ht_update_data: invalid input: ht=0x%p "
-		       "key=0x%llx\n", ht, key);
+				"key=0x%llx\n",
+		       ht, key);
 		return 0;
 	}
 
@@ -155,16 +162,19 @@ int8_t ht_update_data(ht_t *ht, int64_t key, char *string)
 			read_unlock_irqrestore(&ht->ht_lock, flags);
 
 			old_htb_string = htb_ptr->htb_string;
-			htb_ptr->htb_string = kmalloc_ssi(strlen(string) + 1,
-							  GFP_KERNEL);
+			htb_ptr->htb_string =
+				kmalloc_ssi(strlen(string) + 1, GFP_KERNEL);
 			if (!htb_ptr->htb_string) {
 				htb_ptr->htb_string = old_htb_string;
 				return 0;
 			}
 			kfree_ssi(old_htb_string);
 			memcpy(htb_ptr->htb_string, string, strlen(string) + 1);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
 			htb_ptr->htb_time = CURRENT_TIME;
-
+#else
+			getnstimeofday(&htb_ptr->htb_time);
+#endif
 			return 1;
 		}
 		htb_ptr = htb_ptr->htb_next_bucket;
@@ -186,7 +196,8 @@ void *ht_delete_data(ht_t *ht, int64_t key)
 
 	if (ht == NULL) {
 		printk(KERN_ERR "DVS: ht_delete_data: invalid input: ht=0x%p "
-		       "key=0x%llx\n", ht, key);
+				"key=0x%llx\n",
+		       ht, key);
 		return NULL;
 	}
 
@@ -228,7 +239,8 @@ void *ht_find_data(ht_t *ht, int64_t key)
 
 	if (ht == NULL) {
 		printk(KERN_ERR "DVS: ht_find_data: invalid input: ht=0x%p "
-		       "key=0x%llx\n", ht, key);
+				"key=0x%llx\n",
+		       ht, key);
 		return NULL;
 	}
 

@@ -36,42 +36,42 @@
 #error "Invalid inclusion of kernel-only header file ssi_util_init.h"
 #endif /* __KERNEL__ */
 
-
 /*
  * Handlers/callbacks performed by other modules but called from ssiutil.o.
  *
  * The DVS client init and the SSI module's init should set these up.
  */
 typedef struct handlers_s {
-	int  (*receive)(void *);
- 	void (*node_down)(int node);
+	int (*receive)(void *);
+	void (*node_down)(int node);
 	void (*node_up)(int node);
 } handlers_t;
 
-enum {
-	handler_receive = 0x100,
-	handler_node_up,
-	handler_node_down,
-	handler_end_v1,
+enum { handler_receive = 0x100,
+       handler_node_up,
+       handler_node_down,
+       handler_end_v1,
 };
 
 /*
  * Callbacks that are registered by DSD users.
  */
 struct dsd_ops {
-	int (*get_dsd_path)(struct file *file, char *buf,
-			unsigned int size);
-	int (*get_dsd_bcstripe_path)(struct file *file,
-			unsigned int *index, char *buf, unsigned int size);
+	int (*get_dsd_path)(struct file *file, char *buf, unsigned int size);
+	int (*get_dsd_bcstripe_path)(struct file *file, unsigned int *index,
+				     char *buf, unsigned int size);
 };
 
 struct dwfs_open_info;
 
-extern int ssiutil_register_handlers(int identity, unsigned int instance, void *func);
-extern int ssiutil_unregister_handlers(int identity, unsigned int instance, void *func);
+extern int ssiutil_register_handlers(int identity, unsigned int instance,
+				     void *func);
+extern int ssiutil_unregister_handlers(int identity, unsigned int instance,
+				       void *func);
 extern int register_dsd_ops(struct dsd_ops *dsd_ops);
 extern int unregister_dsd_ops(struct dsd_ops *dsd_ops);
 extern int get_dwfs_path(struct file *file, struct dwfs_open_info *dwfs_info);
-extern int get_dwfs_bcstripe(struct file *file, struct dwfs_open_info *dwfs_info);
+extern int get_dwfs_bcstripe(struct file *file,
+			     struct dwfs_open_info *dwfs_info);
 
 #endif /* !defined(SSI_UTIL_INIT_H) */

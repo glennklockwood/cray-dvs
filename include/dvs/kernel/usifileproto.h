@@ -29,13 +29,18 @@
 #error "Invalid inclusion of kernel-only header file usifile.h"
 #endif /* __KERNEL__ */
 
-extern void update_inode(struct inode_attrs *remoteip, struct inode *newip, struct dentry *dep, struct file *fp, int invalidate);
+extern void update_inode(struct inode_attrs *remoteip, struct inode *newip,
+			 struct dentry *dep, struct file *fp, int invalidate);
 extern void utruncate(struct inode *ip);
 extern int urevalidate(struct dentry *dep, unsigned int flags);
-extern int ugetattr(struct vfsmount *mnt, struct dentry *dep, struct kstat *kstatp);
+extern int ugetattr(struct vfsmount *mnt, struct dentry *dep,
+		    struct kstat *kstatp);
 extern int usetattr(struct dentry *dep, struct iattr *iattrp);
-extern int usetxattr(struct dentry *dentry, const char *name, const void *value, size_t size, int flags);
-extern ssize_t ugetxattr(struct dentry *dentry, const char *name, void *value, size_t size);
+extern int usetxattr(struct dentry *dentry, const char *name, const void *value,
+		     size_t size, int flags, const char *prefix,
+		     size_t prefix_len);
+extern ssize_t ugetxattr(struct dentry *dentry, const char *name, void *value,
+			 size_t size, const char *prefix, size_t prefix_len);
 extern ssize_t ulistxattr(struct dentry *dentry, char *list, size_t size);
 extern int uremovexattr(struct dentry *dentry, const char *name);
 

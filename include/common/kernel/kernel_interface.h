@@ -33,7 +33,6 @@
 #error "Invalid inclusion of kernel-only header file kernel_interface.h"
 #endif /* __KERNEL__ */
 
-
 /*
  * Macros
  */
@@ -54,8 +53,8 @@
 /* get the signal lock */
 #define kernel_get_signal_lock(task) ((task)->sighand->siglock)
 /* determine if a specific signal is pending */
-#define kernel_is_specific_signal_pending(task, signo)	\
-    (sigismember(&((task)->pending.signal), signo) ||		\
-     sigismember(&((task)->signal->shared_pending.signal), signo))
+#define kernel_is_specific_signal_pending(task, signo)                         \
+	(sigismember(&((task)->pending.signal), signo) ||                      \
+	 sigismember(&((task)->signal->shared_pending.signal), signo))
 
 #endif /* !defined(MOD_INTERFACE_H) */

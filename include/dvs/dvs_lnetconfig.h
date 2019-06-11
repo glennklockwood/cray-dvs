@@ -17,5 +17,12 @@
  * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#define LNET_VERSION_CODE(major, minor, patch, fix)           \
-    (((major) << 24) + ((minor) << 16) + ((patch) << 8) + (fix))
+#ifndef DVSLNETCFG_H
+#define DVSLNETCFG_H
+
+#define LNET_VERSION_CODE(major, minor, patch, fix)                            \
+	(((major) << 24) + ((minor) << 16) + ((patch) << 8) + (fix))
+
+#define DVS_LNET_VERSION LNET_VERSION_CODE(LUSTRE_MAJOR, LUSTRE_MINOR, 0, 0)
+
+#endif /* DVSLNETCFG_H */

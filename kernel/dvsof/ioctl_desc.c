@@ -23,17 +23,12 @@
 #include <linux/unistd.h>
 #include <linux/version.h>
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
-#include <linux/ext3_jbd.h>
-#include <linux/ext3_fs.h>
-#else
 #include <fs/ext4/ext4.h>
-#endif
 
 /* DVS ioctl header files */
 #include "dvs/dvs_ioctl.h"
 
-#define DEBUG_IOCTL	0  /* set to 1 to enable ext3 ioctls for debugging */
+#define DEBUG_IOCTL 0 /* set to 1 to enable ext3 ioctls for debugging */
 
 /*
  * ioctl_descs is a READ ONLY array describing the supported IOCTLS
@@ -52,56 +47,49 @@ static struct ioctl_desc ioctl_descs[] = {
 #endif
 	/* DVS ioctl descriptions */
 	{ "DVS_GET_REMOTE_FS_MAGIC", DVS_GET_REMOTE_FS_MAGIC,
-			sizeof(unsigned long), 1, 1 },
-	{ "DVS_GET_FILE_BLK_SIZE", DVS_GET_FILE_BLK_SIZE,
-			sizeof(int), 1, 1 },
-	{ "DVS_SET_FILE_BLK_SIZE", DVS_SET_FILE_BLK_SIZE,
-			sizeof(int), 1, 1 },
-	{ "DVS_GET_FILE_STRIPE_WIDTH", DVS_GET_FILE_STRIPE_WIDTH,
-			sizeof(int), 1, 1 },
-	{ "DVS_SET_FILE_STRIPE_WIDTH", DVS_SET_FILE_STRIPE_WIDTH,
-			sizeof(int), 1, 1 },
-	{ "DVS_GET_FILE_DATASYNC", DVS_GET_FILE_DATASYNC,
-			sizeof(short), 1, 1 },
-	{ "DVS_SET_FILE_DATASYNC", DVS_SET_FILE_DATASYNC,
-			sizeof(short), 1, 1 },
-	{ "DVS_GET_FILE_CACHE", DVS_GET_FILE_CACHE,
-			sizeof(short), 1, 1 },
-	{ "DVS_SET_FILE_CACHE", DVS_SET_FILE_CACHE,
-			sizeof(short), 1, 1 },
-	{ "DVS_GET_FILE_CLOSESYNC", DVS_GET_FILE_CLOSESYNC,
-			sizeof(short), 1, 1 },
-	{ "DVS_SET_FILE_CLOSESYNC", DVS_SET_FILE_CLOSESYNC,
-			sizeof(short), 1, 1 },
-	{ "DVS_GET_FILE_KILLPROCESS", DVS_GET_FILE_KILLPROCESS,
-			sizeof(short), 1, 1 },
-	{ "DVS_SET_FILE_KILLPROCESS", DVS_SET_FILE_KILLPROCESS,
-			sizeof(short), 1, 1 },
-	{ "DVS_GET_FILE_ATOMIC", DVS_GET_FILE_ATOMIC,
-			sizeof(short), 1, 1 },
-	{ "DVS_SET_FILE_ATOMIC", DVS_SET_FILE_ATOMIC,
-			sizeof(short), 1, 1 },
-	{ "DVS_GET_FILE_DEFEROPENS", DVS_GET_FILE_DEFEROPENS,
-			sizeof(short), 1, 1 },
-	{ "DVS_SET_FILE_DEFEROPENS", DVS_SET_FILE_DEFEROPENS,
-			sizeof(short), 1, 1 },
+	  sizeof(unsigned long), 1, 1 },
+	{ "DVS_GET_FILE_BLK_SIZE", DVS_GET_FILE_BLK_SIZE, sizeof(int), 1, 1 },
+	{ "DVS_SET_FILE_BLK_SIZE", DVS_SET_FILE_BLK_SIZE, sizeof(int), 1, 1 },
+	{ "DVS_GET_FILE_STRIPE_WIDTH", DVS_GET_FILE_STRIPE_WIDTH, sizeof(int),
+	  1, 1 },
+	{ "DVS_SET_FILE_STRIPE_WIDTH", DVS_SET_FILE_STRIPE_WIDTH, sizeof(int),
+	  1, 1 },
+	{ "DVS_GET_FILE_DATASYNC", DVS_GET_FILE_DATASYNC, sizeof(short), 1, 1 },
+	{ "DVS_SET_FILE_DATASYNC", DVS_SET_FILE_DATASYNC, sizeof(short), 1, 1 },
+	{ "DVS_GET_FILE_CACHE", DVS_GET_FILE_CACHE, sizeof(short), 1, 1 },
+	{ "DVS_SET_FILE_CACHE", DVS_SET_FILE_CACHE, sizeof(short), 1, 1 },
+	{ "DVS_GET_FILE_CLOSESYNC", DVS_GET_FILE_CLOSESYNC, sizeof(short), 1,
+	  1 },
+	{ "DVS_SET_FILE_CLOSESYNC", DVS_SET_FILE_CLOSESYNC, sizeof(short), 1,
+	  1 },
+	{ "DVS_GET_FILE_KILLPROCESS", DVS_GET_FILE_KILLPROCESS, sizeof(short),
+	  1, 1 },
+	{ "DVS_SET_FILE_KILLPROCESS", DVS_SET_FILE_KILLPROCESS, sizeof(short),
+	  1, 1 },
+	{ "DVS_GET_FILE_ATOMIC", DVS_GET_FILE_ATOMIC, sizeof(short), 1, 1 },
+	{ "DVS_SET_FILE_ATOMIC", DVS_SET_FILE_ATOMIC, sizeof(short), 1, 1 },
+	{ "DVS_GET_FILE_DEFEROPENS", DVS_GET_FILE_DEFEROPENS, sizeof(short), 1,
+	  1 },
+	{ "DVS_SET_FILE_DEFEROPENS", DVS_SET_FILE_DEFEROPENS, sizeof(short), 1,
+	  1 },
 	{ "DVS_GET_FILE_CACHE_READ_SZ", DVS_GET_FILE_CACHE_READ_SZ,
-			sizeof(unsigned int), 1, 1 },
+	  sizeof(unsigned int), 1, 1 },
 	{ "DVS_SET_FILE_CACHE_READ_SZ", DVS_SET_FILE_CACHE_READ_SZ,
-			sizeof(unsigned int), 1, 1 },
-	{ "DVS_GET_NNODES", DVS_GET_NNODES,
-			sizeof(int), 1, 1 },
-	{ "DVS_TUNNEL_IOCTL", DVS_TUNNEL_IOCTL,
-			sizeof(struct dvs_ioctl_tunnel), 1, 1},
-	{ "DVS_BCAST_IOCTL", DVS_BCAST_IOCTL,
-			sizeof(struct dvs_ioctl_tunnel), 1, 1},
+	  sizeof(unsigned int), 1, 1 },
+	{ "DVS_GET_NNODES", DVS_GET_NNODES, sizeof(int), 1, 1 },
+	{ "DVS_TUNNEL_IOCTL", DVS_TUNNEL_IOCTL, sizeof(struct dvs_ioctl_tunnel),
+	  1, 1 },
+	{ "DVS_BCAST_IOCTL", DVS_BCAST_IOCTL, sizeof(struct dvs_ioctl_tunnel),
+	  1, 1 },
 	{ "DVS_AUGMENTED_TUNNEL_IOCTL", DVS_AUGMENTED_TUNNEL_IOCTL,
-			sizeof(struct dvs_augmented_ioctl_tunnel), 1, 1},
+	  sizeof(struct dvs_augmented_ioctl_tunnel), 1, 1 },
 	{ "DVS_AUGMENTED_BCAST_IOCTL", DVS_AUGMENTED_BCAST_IOCTL,
-			sizeof(struct dvs_augmented_ioctl_tunnel), 1, 1},
+	  sizeof(struct dvs_augmented_ioctl_tunnel), 1, 1 },
+	{ "DVS_DWFS_SET_STRIPE_CONFIG", DVS_DWFS_SET_STRIPE_CONFIG,
+	  sizeof(struct dvs_ioctl_tunnel), 1, 1 },
 };
 
-#define N_IOCTL_DESCS (sizeof(ioctl_descs)/sizeof(struct ioctl_desc))
+#define N_IOCTL_DESCS (sizeof(ioctl_descs) / sizeof(struct ioctl_desc))
 
 struct ioctl_desc *get_ioctl_desc(int cmd)
 {

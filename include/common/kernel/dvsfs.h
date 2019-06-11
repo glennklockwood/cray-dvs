@@ -51,4 +51,25 @@ extern struct file_operations upfsfops;
 extern struct address_space_operations upfsaops;
 
 extern int async_op_retry(void *);
+
+static inline void dvs_set_root_vfsmount(struct inode *ip)
+{
+	struct incore_upfs_super_block *icsb;
+
+	icsb = (struct incore_upfs_super_block *)ip->i_sb->s_fs_info;
+
+	if (unlikely(icsb->root_vfsmount == NULL)) {
+		spin_lock(&icsb->lock);
+		if (icsb->root_vfsmount == NULL) {
+			struct mount *amnt;
+
+			amnt = list_first_entry_or_null(&ip->i_sb->s_mounts,
+					struct mount,
+					mnt_instance);
+			icsb->root_vfsmount = &amnt->mnt;
+		}
+		spin_unlock(&icsb->lock);
+	}
+}
+
 #endif

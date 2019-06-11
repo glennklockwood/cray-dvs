@@ -29,11 +29,12 @@
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/highmem.h>
+#include <linux/kallsyms.h>
 #include <asm/uaccess.h>
 #ifdef CONFIG_ARM64
 /* Pull in deprecated system call definitions */
-#	define	__ARCH_WANT_SYSCALL_NO_AT
-#	define	__ARCH_WANT_SYSCALL_DEPRECATED
+#define __ARCH_WANT_SYSCALL_NO_AT
+#define __ARCH_WANT_SYSCALL_DEPRECATED
 #endif
 #include <asm/unistd.h>
 #include <linux/resource.h>
@@ -47,12 +48,14 @@
 #undef extern
 
 typedef void (*sys_call_ptr_t)(void);
-extern sys_call_ptr_t sys_call_table[];
 
-void
-initialize_syscall_linkage(void)
+int initialize_syscall_linkage(void)
 {
-	sys_call_ptr_t *ptr_sys_call_table = (void *)&sys_call_table;
+	sys_call_ptr_t *ptr_sys_call_table;
+
+	if ((ptr_sys_call_table = (sys_call_ptr_t *)kallsyms_lookup_name(
+		     "sys_call_table")) == NULL)
+		return -1;
 
 	p_sys_alarm = (void *)ptr_sys_call_table[__NR_alarm];
 	p_sys_close = (void *)ptr_sys_call_table[__NR_close];
@@ -95,7 +98,9 @@ initialize_syscall_linkage(void)
 	p_sys_getxattr = (void *)ptr_sys_call_table[__NR_getxattr];
 	p_sys_listxattr = (void *)ptr_sys_call_table[__NR_listxattr];
 	p_sys_removexattr = (void *)ptr_sys_call_table[__NR_removexattr];
-        p_sys_fadvise64 = (void*)ptr_sys_call_table[__NR_fadvise64];
-        p_sys_readahead = (void*)ptr_sys_call_table[__NR_readahead];
-	p_sys_sync = (void*)ptr_sys_call_table[__NR_sync];
+	p_sys_fadvise64 = (void *)ptr_sys_call_table[__NR_fadvise64];
+	p_sys_readahead = (void *)ptr_sys_call_table[__NR_readahead];
+	p_sys_sync = (void *)ptr_sys_call_table[__NR_sync];
+
+	return 0;
 }

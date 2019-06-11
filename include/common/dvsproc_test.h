@@ -17,8 +17,8 @@
  * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __DVSPROC_TEST_H__
-#define __DVSPROC_TEST_H__
+#ifndef __DVSSYS_TEST_H__
+#define __DVSSYS_TEST_H__
 
 #ifdef __KERNEL__
 #include <linux/proc_fs.h>
@@ -26,7 +26,6 @@
 extern int dvsproc_test_init(struct proc_dir_entry *);
 extern void dvsproc_test_exit(struct proc_dir_entry *);
 
-#endif	/* __KERNEL__ */
+#endif /* __KERNEL__ */
 
-#endif /* __DVSPROC_TEST_H__ */
-
+#endif /* __DVSSYS_TEST_H__ */

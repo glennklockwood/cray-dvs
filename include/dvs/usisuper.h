@@ -4,7 +4,8 @@
 
 /*
  * Unpublished Work / 2004 Unlimited Scale, Inc.  All rights reserved.
- * Copyright 2006-2007, 2009, 2011, 2014-2015, 2017 Cray Inc. All Rights Reserved.
+ * Copyright 2006-2007, 2009, 2011, 2014-2015, 2017 Cray Inc. All Rights
+ * Reserved.
  *
  * This file is part of Cray Data Virtualization Service (DVS).
  *
@@ -28,15 +29,15 @@
 /* This is needed to get MAX_PFS_NODES. */
 #include "common/resource.h"
 
-#define UPFS_SUPER_PREFIX				"...dvs_"
+#define UPFS_SUPER_PREFIX "...dvs_"
 
-#define UPFS_MAXNAME					256
+#define UPFS_MAXNAME 256
 /*
  * Bug: http://bugzilla.us.cray.com/show_bug.cgi?id=799834
  * Increase the default timeout to 3 seconds vs no caching
  */
-#define UPFS_ATTRCACHE_DEFAULT                  "3"
-#define UPFS_MAXSERVERS				1024
+#define UPFS_ATTRCACHE_DEFAULT "3"
+#define UPFS_MAXSERVERS 1024
 
 #define DVS_FTYPE_MAGIC 0x3e3f
 
@@ -45,4 +46,3 @@
 #endif
 
 #endif /* USISUPER_H */
-

@@ -5,8 +5,10 @@
 SUBDIRS = \
 	include \
 	scripts \
+	userspace \
 	test/unittest \
-	test/ioperf
+	test/ioperf \
+	test/xattr/xattr_stress
 
 if DOCS
 SUBDIRS += man
@@ -22,4 +24,3 @@ sysconf_DATA = .version
 
 install-data-local:
 	$(INSTALL_DATA) -D $(srcdir)/module $(DESTDIR)@MODULE_PATH@
-

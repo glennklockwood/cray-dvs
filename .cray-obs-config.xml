@@ -1,0 +1,88 @@
+<?xml version="1.0" ?>
+<configuration xmlns="http://svndownstream.us.cray.com" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <stream type="obs" xsi:type="obsStreamType">
+        <project>
+            SCM_PROJECT:SCM_REPO:
+            <extracted refer="full-branch"/>
+        </project>
+        <sources>
+            <environment>
+                <variable>
+                    RELEASE_EXTRA
+                </variable>
+                <name>
+                    _release_extra
+                </name>
+            </environment>
+            <gitcmd>
+                <command>
+                    branch | sed -e 's/(HEAD detached at //' -e 's/)//'
+                </command>
+                <name>
+                    _branch
+                </name>
+                <extract group="1" name="full-branch" pattern="\*\s+(.*$)"/>
+            </gitcmd>
+            <gitcmd>
+                <command>
+                    rev-parse --short
+                    <extracted refer="full-branch"/>
+                </command>
+                <name>
+                    _last_changed_rev
+                </name>
+            </gitcmd>
+            <gitcmd>
+                <command>
+                    describe --first-parent --tags --long --match='cray-*' | sed -e 's/^cray-//' -e 's/-/./' -e 's/-g.*//'
+                </command>
+                <name>
+                    _tag
+                </name>
+                <extract group="1" name="version" pattern="(.*)"/>
+            </gitcmd>
+            <gitcmd>
+                <command>
+                    config --get remote.origin.url
+                </command>
+                <name>
+                    _url
+                </name>
+            </gitcmd>
+            <file>
+                <name>
+                    cray-dvs.spec
+                </name>
+            </file>
+            <file>
+                <name>
+                    cray-dvs-kernel-package
+                </name>
+            </file>
+            <file>
+                <name>
+                    preamble
+                </name>
+            </file>
+            <tarfile compression="bz2">
+                <name>
+                    cray-dvs-
+                    <extracted refer="version"/>
+                </name>
+                <exclusion pattern=".*\.spec$"/>
+                <tarinfo recursive="true">
+                    <name>
+                        .
+                    </name>
+                    <arcname>
+                        cray-dvs-
+                        <extracted refer="version"/>
+                    </arcname>
+                </tarinfo>
+            </tarfile>
+        </sources>
+        <package>
+            cray-dvs
+        </package>
+    </stream>
+</configuration>

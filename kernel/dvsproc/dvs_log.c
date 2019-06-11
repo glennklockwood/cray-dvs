@@ -56,8 +56,7 @@ DEFINE_SPINLOCK(dvs_log_init_lock);
  *
  * @param void
  */
-static inline void
-init_locks_once(void)
+static inline void init_locks_once(void)
 {
 	static int init = 0;
 	if (!init) {
@@ -89,19 +88,19 @@ init_locks_once(void)
  *
  * @return struct log_info*
  */
-static inline struct log_info *
-lock_log(int n)
+static inline struct log_info *lock_log(int n)
 {
 	init_locks_once();
 	if (n >= DVS_MAX_LOGS) {
-		printk(KERN_ERR "DVS: Attempt to lock log[%d], max %d\n",
-		       n, DVS_MAX_LOGS);
+		printk(KERN_ERR "DVS: Attempt to lock log[%d], max %d\n", n,
+		       DVS_MAX_LOGS);
 		return NULL;
 	}
 	spin_lock(&dvs_log_locks[n]);
 	if (!dvs_logs[n]) {
 		spin_unlock(&dvs_log_locks[n]);
-		printk(KERN_ERR "DVS: Attempt to lock uninitialized log[%d]\n", n);
+		printk(KERN_ERR "DVS: Attempt to lock uninitialized log[%d]\n",
+		       n);
 		return NULL;
 	}
 	return dvs_logs[n];
@@ -116,13 +115,12 @@ lock_log(int n)
  * @param n = index of log
  * @param pirqflags = IRQ flag holder from lock_log()
  */
-static inline void
-unlock_log(int n)
+static inline void unlock_log(int n)
 {
 	init_locks_once();
 	if (n >= DVS_MAX_LOGS) {
-		printk(KERN_ERR "DVS: Attempt to unlock log[%d], max %d\n",
-		       n, DVS_MAX_LOGS);
+		printk(KERN_ERR "DVS: Attempt to unlock log[%d], max %d\n", n,
+		       DVS_MAX_LOGS);
 		return;
 	}
 	spin_unlock(&dvs_log_locks[n]);
@@ -142,8 +140,8 @@ unlock_log(int n)
  * @param log_start = start of the log buffer
  * @param log_length = length of the log buffer
  */
-static void *
-dvs_log_copy_from(void *to, void *from, int length, void *log_start, int log_length)
+static void *dvs_log_copy_from(void *to, void *from, int length,
+			       void *log_start, int log_length)
 {
 	int offset = 0;
 
@@ -162,8 +160,8 @@ dvs_log_copy_from(void *to, void *from, int length, void *log_start, int log_len
 	return from;
 }
 
-static void *
-dvs_log_copy_to(void *to, void *from, int length, void *log_start, int log_length)
+static void *dvs_log_copy_to(void *to, void *from, int length, void *log_start,
+			     int log_length)
 {
 	int offset = 0;
 
@@ -191,8 +189,7 @@ dvs_log_copy_to(void *to, void *from, int length, void *log_start, int log_lengt
  *
  * @return int = 0 on success, negative error code on failure
  */
-int
-dvs_log_init(int n, uint size_kb, char *name)
+int dvs_log_init(int n, uint size_kb, char *name)
 {
 	struct log_info *log;
 
@@ -201,12 +198,13 @@ dvs_log_init(int n, uint size_kb, char *name)
 
 	/* Sanity errors */
 	if (n >= DVS_MAX_LOGS) {
-		printk(KERN_ERR "DVS: Attempt to init log[%d], max %d\n",
-		       n, DVS_MAX_LOGS);
+		printk(KERN_ERR "DVS: Attempt to init log[%d], max %d\n", n,
+		       DVS_MAX_LOGS);
 		return -EINVAL;
 	}
 	if (!name) {
-		printk(KERN_ERR "DVS: Attempt to init log[%d] with no name\n", n);
+		printk(KERN_ERR "DVS: Attempt to init log[%d] with no name\n",
+		       n);
 		return -EINVAL;
 	}
 
@@ -222,7 +220,7 @@ dvs_log_init(int n, uint size_kb, char *name)
 
 	/* Allocate the unpacking buffer */
 	if (!(log->message = vmalloc_ssi(DVS_LOG_MESSAGE_SIZE))) {
-		kfree(log);
+		kfree_ssi(log);
 		return -ENOMEM;
 	}
 	/* vmalloc_ssi() does memset to zero  */
@@ -233,8 +231,8 @@ dvs_log_init(int n, uint size_kb, char *name)
 		if (log->size_bytes < DVS_LOG_MESSAGE_SIZE)
 			log->size_bytes = DVS_LOG_MESSAGE_SIZE;
 		if (!(log->buf = vmalloc_ssi(log->size_bytes))) {
-			vfree(log->message);
-			kfree(log);
+			vfree_ssi(log->message);
+			kfree_ssi(log);
 			return -ENOMEM;
 		}
 		/* vmalloc_ssi() does memset to zero  */
@@ -247,9 +245,9 @@ dvs_log_init(int n, uint size_kb, char *name)
 	if (dvs_logs[n]) {
 		/* Oops, someone beat us to it */
 		spin_unlock(&dvs_log_locks[n]);
-		vfree(log->message);
-		vfree(log->buf);
-		kfree(log);
+		vfree_ssi(log->message);
+		vfree_ssi(log->buf);
+		kfree_ssi(log);
 		printk(KERN_ERR "DVS: Attempt to init existing log[%d]\n", n);
 		return -EINVAL;
 	}
@@ -267,10 +265,9 @@ dvs_log_init(int n, uint size_kb, char *name)
  *
  * @param n = index of log to destroy
  */
-void
-dvs_log_exit(int n)
+void dvs_log_exit(int n)
 {
-	struct log_info* log;
+	struct log_info *log;
 
 	/* clobber the log for public access */
 	if (!(log = lock_log(n)))
@@ -278,9 +275,9 @@ dvs_log_exit(int n)
 	dvs_logs[n] = NULL;
 	unlock_log(n);
 	/* free the memory */
-	vfree(log->message);
-	vfree(log->buf);
-	kfree(log);
+	vfree_ssi(log->message);
+	vfree_ssi(log->buf);
+	kfree_ssi(log);
 }
 
 /**
@@ -321,22 +318,21 @@ dvs_log_exit(int n)
  * @return char* = pointer to the first complete message in the
  *         buffer, or NULL if there are no messages
  */
-static char *
-dvs_log_find_first(char *buf, char *head, unsigned long size)
+static char *dvs_log_find_first(char *buf, char *head, unsigned long size)
 {
 	unsigned char *len;
 	char *first;
-	int offset = 1;	/* offset from the end */
+	int offset = 1; /* offset from the end */
 
 	first = NULL;
 	/* consume the entire buffer */
 	while (offset < size) {
 		/* find the length of the previous message */
 		/* len = &head[size-offset] with wrap-around.
-		 * Since offset == 1 initially, this is &head[-1], or the last byte
-		 * before the current head, which should be the length of the last
-		 * message placed in the buffer. It will be NUL only if the buffer
-		 * is empty.
+		 * Since offset == 1 initially, this is &head[-1], or the last
+		 * byte before the current head, which should be the length of
+		 * the last message placed in the buffer. It will be NUL only if
+		 * the buffer is empty.
 		 */
 		len = DVS_LOG_LINEAR(buf, head, size, size - offset);
 		if (*len == '\0')
@@ -353,7 +349,7 @@ dvs_log_find_first(char *buf, char *head, unsigned long size)
 		/* go back to the end of the previous message */
 		offset += 1;
 	}
-		
+
 	return first;
 }
 
@@ -367,8 +363,9 @@ dvs_log_find_first(char *buf, char *head, unsigned long size)
  * @param curr_time = reference time
  * @param curr_jiffies = reference jiffies ~ curr_time
  */
-static void
-dvs_log_format_message(char *fmessage, struct log_message *message, struct timeval *curr_time, unsigned long curr_jiffies)
+static void dvs_log_format_message(char *fmessage, struct log_message *message,
+				   struct timeval *curr_time,
+				   unsigned long curr_jiffies)
 {
 	struct timeval log_time;
 	struct tm htime;
@@ -382,12 +379,13 @@ dvs_log_format_message(char *fmessage, struct log_message *message, struct timev
 	time_to_tm(secs, 0, &htime);
 
 	/* this overwrites the length field in the last byte of the message */
-	message->text[(int) message->text_size] = '\0';
+	message->text[(int)message->text_size] = '\0';
 
 	/* render into fmessage */
 	len = snprintf(fmessage, PAGE_SIZE, "%ld-%d-%d %02d:%02d:%02d-UTC: %s",
-	             1900 + htime.tm_year, 1 + htime.tm_mon, htime.tm_mday,
-	             htime.tm_hour, htime.tm_min, htime.tm_sec, message->text);
+		       1900 + htime.tm_year, 1 + htime.tm_mon, htime.tm_mday,
+		       htime.tm_hour, htime.tm_min, htime.tm_sec,
+		       message->text);
 
 	/*
 	 * Add a NULL byte if the string was too large. This should already have
@@ -408,8 +406,7 @@ dvs_log_format_message(char *fmessage, struct log_message *message, struct timev
  *
  * @return int = 0 on success, -error if failure
  */
-int
-dvs_log_print(int n, struct seq_file *m)
+int dvs_log_print(int n, struct seq_file *m)
 {
 	struct log_message *message;
 	struct log_info *log;
@@ -439,7 +436,7 @@ dvs_log_print(int n, struct seq_file *m)
 
 	/* buffer for the raw message */
 	if ((message = vmalloc_ssi(DVS_LOG_MESSAGE_SIZE)) == NULL) {
-		vfree(fmessage);
+		vfree_ssi(fmessage);
 		return -ENOMEM;
 	}
 	/* vmalloc_ssi() does memset to zero  */
@@ -466,7 +463,7 @@ dvs_log_print(int n, struct seq_file *m)
 	if (log && tmp_buf && tmp_size != log->size_bytes) {
 		unlock_log(n);
 		/* Don't alloc or free while lock is held */
-		vfree(tmp_buf);
+		vfree_ssi(tmp_buf);
 		tmp_buf = NULL;
 		/* Lock again, after simulating memory failure */
 		log = lock_log(n);
@@ -474,9 +471,9 @@ dvs_log_print(int n, struct seq_file *m)
 
 	/* Now we check, and if someone killed the log, we're done */
 	if (!log) {
-		vfree(tmp_buf);
-		vfree(message);
-		vfree(fmessage);
+		vfree_ssi(tmp_buf);
+		vfree_ssi(message);
+		vfree_ssi(fmessage);
 		return -EINVAL;
 	}
 	/* log != NULL at this point */
@@ -510,8 +507,9 @@ dvs_log_print(int n, struct seq_file *m)
 		 * total message size.
 		 */
 		message_size = *(DVS_LOG_LINEAR(tmp_buf, head, tmp_size,
-		                 offsetof(struct log_message, text_size))) +
-		               DVS_LOG_MESSAGE_META_SIZE;
+						offsetof(struct log_message,
+							 text_size))) +
+			       DVS_LOG_MESSAGE_META_SIZE;
 
 		/* zero size text means we ran off the end of the log. This
 		 * can only happen if the log is empty, but in that case, we
@@ -521,10 +519,10 @@ dvs_log_print(int n, struct seq_file *m)
 			break;
 
 		/* render the message */
-		head = dvs_log_copy_from(message, head, message_size,
-					 tmp_buf, tmp_size);
-		dvs_log_format_message(fmessage, message,
-		                       &curr_time, curr_jiffies);
+		head = dvs_log_copy_from(message, head, message_size, tmp_buf,
+					 tmp_size);
+		dvs_log_format_message(fmessage, message, &curr_time,
+				       curr_jiffies);
 		seq_printf(m, "%s", fmessage);
 
 		if (message->flags & DVS_LOG_TRUNCATED)
@@ -538,9 +536,9 @@ dvs_log_print(int n, struct seq_file *m)
 	if (log)
 		unlock_log(n);
 	else
-		vfree(tmp_buf);
-	vfree(fmessage);
-	vfree(message);
+		vfree_ssi(tmp_buf);
+	vfree_ssi(fmessage);
+	vfree_ssi(message);
 
 	return 0;
 }
@@ -559,8 +557,7 @@ dvs_log_print(int n, struct seq_file *m)
  * @param fmt = printf() format string
  * @param ... = arguments to printf()
  */
-void
-dvs_log_write(int n, int pflg, const char *fmt, ...)
+void dvs_log_write(int n, int pflg, const char *fmt, ...)
 {
 	va_list args;
 	struct log_info *log;
@@ -571,10 +568,10 @@ dvs_log_write(int n, int pflg, const char *fmt, ...)
 	/* We may need this string twice, so build it here */
 	va_start(args, fmt);
 	if (len < sizeof(buffer))
-		len += snprintf(&buffer[len], sizeof(buffer)-len, "pid=%d cmd=%s ",
-				current->pid, current->comm);
+		len += snprintf(&buffer[len], sizeof(buffer) - len,
+				"pid=%d cmd=%s ", current->pid, current->comm);
 	if (len < sizeof(buffer))
-		len += vsnprintf(&buffer[len], sizeof(buffer)-len, fmt, args);
+		len += vsnprintf(&buffer[len], sizeof(buffer) - len, fmt, args);
 	va_end(args);
 
 	/* If pflg is set, do a printk here, even if the log is bogus */
@@ -623,8 +620,7 @@ dvs_log_write(int n, int pflg, const char *fmt, ...)
  *
  * @param n = index of log to clear
  */
-void
-dvs_log_clear(int n)
+void dvs_log_clear(int n)
 {
 	struct log_info *log;
 
@@ -647,8 +643,7 @@ dvs_log_clear(int n)
  *
  * @return int = 0 if successful, -error if failure
  */
-int
-dvs_log_resize(int n, int new_size_kb)
+int dvs_log_resize(int n, int new_size_kb)
 {
 	char *new_buf = NULL;
 	char *old_buf = NULL;
@@ -670,7 +665,7 @@ dvs_log_resize(int n, int new_size_kb)
 
 	/* lock the log */
 	if (!(log = lock_log(n))) {
-		vfree(old_buf);
+		vfree_ssi(old_buf);
 		return -EINVAL;
 	}
 
@@ -692,7 +687,7 @@ dvs_log_resize(int n, int new_size_kb)
 	/* we're done with the log structure */
 	unlock_log(n);
 	/* delete the old buf -- harmless if NULL */
-	vfree(old_buf);
+	vfree_ssi(old_buf);
 	return 0;
 }
 
@@ -710,10 +705,9 @@ dvs_log_resize(int n, int new_size_kb)
  *
  * @return void* = dummy non-NULL pointer
  */
-void *
-dvs_log_handle(int n)
+void *dvs_log_handle(int n)
 {
-static	uint x = 0;
+	static uint x = 0;
 	struct log_info *log;
 	void *rtn = NULL;
 
@@ -733,8 +727,7 @@ static	uint x = 0;
  *
  * @return uint = size of log buffer in KB
  */
-uint
-dvs_log_sizekb(int n)
+uint dvs_log_sizekb(int n)
 {
 	struct log_info *log;
 	uint rtn = 0;
@@ -745,7 +738,6 @@ dvs_log_sizekb(int n)
 	}
 	return rtn;
 }
-
 
 EXPORT_SYMBOL(dvs_log_sizekb);
 EXPORT_SYMBOL(dvs_log_handle);

@@ -17,8 +17,8 @@
  * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __DVSPROC_STAT_H__
-#define __DVSPROC_STAT_H__
+#ifndef __DVSSYS_STAT_H__
+#define __DVSSYS_STAT_H__
 
 #ifdef __KERNEL__
 #include <linux/seq_file.h>
@@ -28,55 +28,55 @@
 /*
  * Magic number for identifying stats memory block.
  */
-#define DVSPROC_STAT_MAGIC	((unsigned long)"DVSSTATS")
+#define DVSSYS_STAT_MAGIC ((unsigned long)"DVSSTATS")
 
 /*
  * Stats current version number.
  */
-#define DVSPROC_STAT_VERSION		2
+#define DVSSYS_STAT_VERSION 2
 
 /*
  * Output format
  */
-#define	DVSPROC_STAT_FMT_LEGACY		0
-#define	DVSPROC_STAT_FMT_HELP		1
-#define	DVSPROC_STAT_FMT_FLAT		2
-#define	DVSPROC_STAT_FMT_JSON		3
+#define DVSSYS_STAT_FMT_LEGACY 0
+#define DVSSYS_STAT_FMT_HELP 1
+#define DVSSYS_STAT_FMT_FLAT 2
+#define DVSSYS_STAT_FMT_JSON 3
 
-#define	DVSPROC_STAT_FFLG_VERBOSE	(1 << 0)
-#define DVSPROC_STAT_FFLG_PRETTY	(1 << 1)
-#define	DVSPROC_STAT_FFLG_TEST		(1 << 2)
-
-/* 
- * sequential list of statistic identifier for 'type' argument to
- * dvsproc_stat_update().
- */
-#define DVSPROC_STAT_REQ		1
-#define DVSPROC_STAT_IO			2
-#define DVSPROC_STAT_IPC_REQUEST	3
-#define DVSPROC_STAT_IPC_REQUEST_ASYNC	4
-#define DVSPROC_STAT_IPC_REPLY		5
-#define DVSPROC_STAT_OPEN_FILES		6
-#define DVSPROC_STAT_OPER		7
-#define DVSPROC_STAT_OPER_TIME		8
-#define DVSPROC_STAT_REQP		9
-#define DVSPROC_STAT_REQP_TIME		10
-#define DVSPROC_STAT_CLIENT_LEN		11
-#define DVSPROC_STAT_CLIENT_OFF		12
-#define DVSPROC_STAT_CREATE		13
-#define DVSPROC_STAT_DELETE		14
+#define DVSSYS_STAT_FFLG_VERBOSE (1 << 0)
+#define DVSSYS_STAT_FFLG_PRETTY (1 << 1)
+#define DVSSYS_STAT_FFLG_TEST (1 << 2)
 
 /*
- * The 'tag' (3rd) argument to dvsproc_stat_update(), for use with the
- * DVS_PROC_STAT_CREATE and DVS_PROC_STAT_DELETE stats.
+ * sequential list of statistic identifier for 'type' argument to
+ * dvsdebug_stat_update().
  */
-#define DVSPROC_STAT_TYPE_INODE		1
-#define DVSPROC_STAT_TYPE_FILE		2
-#define DVSPROC_STAT_TYPE_SYMLINK	3
-#define DVSPROC_STAT_TYPE_DIRECTORY	4
+#define DVSSYS_STAT_REQ 1
+#define DVSSYS_STAT_IO 2
+#define DVSSYS_STAT_IPC_REQUEST 3
+#define DVSSYS_STAT_IPC_REQUEST_ASYNC 4
+#define DVSSYS_STAT_IPC_REPLY 5
+#define DVSSYS_STAT_OPEN_FILES 6
+#define DVSSYS_STAT_OPER 7
+#define DVSSYS_STAT_OPER_TIME 8
+#define DVSSYS_STAT_REQP 9
+#define DVSSYS_STAT_REQP_TIME 10
+#define DVSSYS_STAT_CLIENT_LEN 11
+#define DVSSYS_STAT_CLIENT_OFF 12
+#define DVSSYS_STAT_CREATE 13
+#define DVSSYS_STAT_DELETE 14
 
-/* 
- * Specify bounds for 'tag' (3rd) argument to dvsproc_stat_update().
+/*
+ * The 'tag' (3rd) argument to dvsdebug_stat_update(), for use with the
+ * DVSSYS_STAT_CREATE and DVSSYS_STAT_DELETE stats.
+ */
+#define DVSSYS_STAT_TYPE_INODE 1
+#define DVSSYS_STAT_TYPE_FILE 2
+#define DVSSYS_STAT_TYPE_SYMLINK 3
+#define DVSSYS_STAT_TYPE_DIRECTORY 4
+
+/*
+ * Specify bounds for 'tag' (3rd) argument to dvsdebug_stat_update().
  * This is specific to the statistic types above and may or may
  * not need to be defined depending on if this argument is used.
  *
@@ -87,9 +87,9 @@
  * For message/operation stats, type is passed as the 'tag' value
  * For other stats, 'tag' may have a different meaning (or none)
  */
-#define DVSPROC_STAT_REQ_COUNTERS	RQ_DVS_END_V1
-#define DVSPROC_STAT_OPER_COUNTERS	VFS_OP_END_V1
-#define DVSPROC_STAT_REQP_COUNTERS	RQ_DVS_END_V1
+#define DVSSYS_STAT_REQ_COUNTERS RQ_DVS_END_V1
+#define DVSSYS_STAT_OPER_COUNTERS VFS_OP_END_V1
+#define DVSSYS_STAT_REQP_COUNTERS RQ_DVS_END_V1
 
 /*
  * Actual statistics counters
@@ -123,11 +123,11 @@
  *   dirs_created	   total directories created
  *   dirs_deleted	   total directories deleted
  */
-struct dvsproc_stat_counters {
+struct dvsdebug_stat_counters {
 	atomic64_t read_min, read_max;
 	atomic64_t write_min, write_max;
-	atomic64_t request[DVSPROC_STAT_REQ_COUNTERS][2];
-	atomic64_t requestp[DVSPROC_STAT_REQ_COUNTERS][4];
+	atomic64_t request[DVSSYS_STAT_REQ_COUNTERS][2];
+	atomic64_t requestp[DVSSYS_STAT_REQ_COUNTERS][4];
 	atomic64_t vfsops[VFS_OP_END_V1][4];
 	atomic64_t ipc_request[2];
 	atomic64_t ipc_request_async[2];
@@ -147,7 +147,7 @@ struct dvsproc_stat_counters {
 	atomic64_t dirs_deleted;
 };
 
-/* 
+/*
  * Statistics structure
  * mountpoint_id
  *   monotonic integer, -1 for aggregate stats
@@ -158,9 +158,9 @@ struct dvsproc_stat_counters {
  * control
  *   0 = statistics disabled, 1 = statistics enabled
  * format
- *   DVSPROC_STAT_FMT_* value for output format
+ *   DVSSYS_STAT_FMT_* value for output format
  * fflags
- *   DVSPROC_STAT_FFLG_* flags
+ *   DVSSYS_STAT_FFLG_* flags
  *
  * stats_entry
  *   proc_create_data() return value, handle for Linux proc_*()
@@ -168,28 +168,29 @@ struct dvsproc_stat_counters {
  * counters
  *   statistics counters
  */
-struct dvsproc_stat {
-	uint64_t magic;			// do not move this field, EVER!
-	uint64_t version;		// do not move this field, EVER!
+struct dvsdebug_stat {
+	uint64_t magic; // do not move this field, EVER!
+	uint64_t version; // do not move this field, EVER!
 	unsigned int control;
 	unsigned int format;
 	unsigned int fflags;
 	int mountpoint_id;
-	struct proc_dir_entry *mount_entry;
-	struct proc_dir_entry *mount_dir;
-	struct proc_dir_entry *stats_entry;
-	struct proc_dir_entry *openfile_entry;
-	struct proc_dir_entry *nodenames_entry;
-	struct proc_dir_entry *drop_caches_entry;
-	struct dvsproc_stat_counters counters;
+	struct dentry *mount_entry;
+	struct dentry *mount_dir;
+	struct dentry *stats_entry;
+	struct dentry *openfile_entry;
+	struct dentry *nodenames_entry;
+	struct dentry *drop_caches_entry;
+	struct dvsdebug_stat_counters counters;
 };
 
-extern void dvsproc_stat_update(struct dvsproc_stat *, unsigned int, unsigned int, ssize_t);
-extern void dvsproc_stat_print(struct seq_file *, struct dvsproc_stat *);
-extern int  dvsproc_stat_set_control(struct dvsproc_stat *, char *);
-extern void dvsproc_stat_init(struct dvsproc_stat *, int);
+extern void dvsdebug_stat_update(struct dvsdebug_stat *, unsigned int,
+				 unsigned int, ssize_t);
+extern void dvsdebug_stat_print(struct seq_file *, struct dvsdebug_stat *);
+extern int dvsdebug_stat_set_control(struct dvsdebug_stat *, char *);
+extern void dvsdebug_stat_init(struct dvsdebug_stat *, int);
 
-extern struct dvsproc_stat aggregate_stats;
+extern struct dvsdebug_stat aggregate_stats;
 #endif
 
-#endif /* __DVSPROC_STAT_H__ */
+#endif /* __DVSSYS_STAT_H__ */

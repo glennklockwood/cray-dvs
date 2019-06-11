@@ -32,7 +32,8 @@ extern long (*p_sys_exit)(int status);
 
 extern ssize_t (*p_sys_read)(unsigned int fd, char *buf, size_t count);
 
-extern long (*p_sys_select)(int n, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
+extern long (*p_sys_select)(int n, fd_set *readfds, fd_set *writefds,
+			    fd_set *exceptfds, struct timeval *timeout);
 
 extern long (*p_sys_open)(const char *filename, int flags, int mode);
 
@@ -40,27 +41,34 @@ extern long (*p_sys_creat)(const char *filename, int mode);
 
 extern ssize_t (*p_sys_write)(unsigned int fd, const char *buf, size_t count);
 
-extern ssize_t (*p_sys_pwrite64)(unsigned int fd, char *buf, size_t count, loff_t pos);
+extern ssize_t (*p_sys_pwrite64)(unsigned int fd, char *buf, size_t count,
+				 loff_t pos);
 
-extern ssize_t (*p_sys_pread64)(unsigned int fd, char *buf, size_t count, loff_t pos);
+extern ssize_t (*p_sys_pread64)(unsigned int fd, char *buf, size_t count,
+				loff_t pos);
 
-extern long (*p_sys_fadvise64)(unsigned int fd, loff_t offset, loff_t len, int advice);
+extern long (*p_sys_fadvise64)(unsigned int fd, loff_t offset, loff_t len,
+			       int advice);
 
-extern long (*p_sys_getdents64)(unsigned int fd, struct linux_dirent64 *dirent, unsigned int count);
+extern long (*p_sys_getdents64)(unsigned int fd, struct linux_dirent64 *dirent,
+				unsigned int count);
 
 extern long (*p_sys_unlink)(const char *pathname);
 
 extern off_t (*p_sys_lseek)(unsigned int fd, off_t offset, unsigned int origin);
 
-extern long (*p_sys_ioctl)(unsigned int fd, unsigned int cmd, unsigned long arg);
+extern long (*p_sys_ioctl)(unsigned int fd, unsigned int cmd,
+			   unsigned long arg);
 
 extern long (*p_sys_fsync)(unsigned int fd);
 
 extern long (*p_sys_fdatasync)(unsigned int fd);
 
-extern ssize_t (*p_sys_readv)(unsigned long fd, const struct iovec *vector, unsigned long count);
+extern ssize_t (*p_sys_readv)(unsigned long fd, const struct iovec *vector,
+			      unsigned long count);
 
-extern ssize_t (*p_sys_writev)(unsigned long fd, const struct iovec *vector, unsigned long count);
+extern ssize_t (*p_sys_writev)(unsigned long fd, const struct iovec *vector,
+			       unsigned long count);
 
 extern long (*p_sys_link)(const char *oldname, const char *newname);
 
@@ -82,7 +90,8 @@ extern long (*p_sys_truncate)(const char *path, unsigned long len);
 
 extern long (*p_sys_ftruncate)(unsigned int fd, unsigned long len);
 
-extern long (*p_sys_fcntl)(unsigned int fd, unsigned int cmd, unsigned long arg);
+extern long (*p_sys_fcntl)(unsigned int fd, unsigned int cmd,
+			   unsigned long arg);
 
 extern long (*p_sys_stat)(char *path, struct __old_kernel_stat *buf);
 
@@ -90,17 +99,21 @@ extern long (*p_sys_statfs)(const char *path, struct statfs *buf);
 
 extern long (*p_sys_chdir)(const char *filename);
 
-extern long (*p_sys_wait4)(pid_t pid, unsigned int *stat_addr, int options, struct rusage *ru);
+extern long (*p_sys_wait4)(pid_t pid, unsigned int *stat_addr, int options,
+			   struct rusage *ru);
 
 extern long (*p_sys_getcwd)(char *buf, unsigned long size);
 
-extern long (*p_sys_mmap)(unsigned long addr, unsigned long len, unsigned long prot, unsigned long flags, unsigned long fd, unsigned long pgoff);
+extern long (*p_sys_mmap)(unsigned long addr, unsigned long len,
+			  unsigned long prot, unsigned long flags,
+			  unsigned long fd, unsigned long pgoff);
 
 extern long (*p_sys_munmap)(unsigned long addr, size_t len);
 
 extern long (*p_sys_getrusage)(int who, struct rusage *ru);
 
-extern long (*p_sys_setxattr)(char *path, char *name, void *value, size_t size, int flags);
+extern long (*p_sys_setxattr)(char *path, char *name, void *value, size_t size,
+			      int flags);
 
 extern long (*p_sys_getxattr)(char *path, char *name, void *value, size_t size);
 

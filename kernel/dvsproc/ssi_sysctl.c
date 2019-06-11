@@ -30,61 +30,36 @@
 #include "common/resource.h"
 #include "common/kernel/usiipc.h"
 
-#define CTL_SSI		526	/* random number */
+#define CTL_SSI 526 /* random number */
 
 /* Forward */
-static int ssiinfo_do_integer(struct ctl_table *, int, void *, size_t *, loff_t *);
+static int ssiinfo_do_integer(struct ctl_table *, int, void *, size_t *,
+			      loff_t *);
 
 /* CTL_SSI names */
-enum
-{
-	SSI_NODEID=1,		/* intra-system unique node ID */
+enum { SSI_NODEID = 1, /* intra-system unique node ID */
 };
 
 static struct ctl_table ssi_info_table[] = {
 	{
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,0,0)
-		.ctl_name	= SSI_NODEID,
-#endif
-		.procname	= "nodeid",
-		.data		= &ssi_nodeid,
-		.maxlen		= sizeof(int),
-		.mode		= 0644,
-		.proc_handler	= &ssiinfo_do_integer,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,0,0)
-		.strategy	= &sysctl_intvec,
-#endif
+		.procname = "nodeid",
+		.data = &ssi_nodeid,
+		.maxlen = sizeof(int),
+		.mode = 0644,
+		.proc_handler = &ssiinfo_do_integer,
 	},
-	{0}
+	{ 0 }
 };
 
-static struct ctl_table  ssi_dvs_root_table[] = {
-    	{
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,0,0)
-	CTL_SSI,
-#endif
-	"dvs",
-	NULL,
-	0,
-	0555,
-	ssi_info_table
-	},
-	{0}
-};
+static struct ctl_table ssi_dvs_root_table[] = { {
+							 "dvs", NULL, 0, 0555,
+							 ssi_info_table },
+						 { 0 } };
 
-static struct ctl_table  ssi_root_table[] = {
-    	{
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,0,0)
-	CTL_FS,
-#endif
-	"fs",
-	NULL,
-	0,
-	0555,
-	ssi_dvs_root_table
-	},
-	{0}
-};
+static struct ctl_table ssi_root_table[] = { {
+						     "fs", NULL, 0, 0555,
+						     ssi_dvs_root_table },
+					     { 0 } };
 
 int ssi_nodeid = -1;
 
@@ -93,9 +68,8 @@ static struct ctl_table_header *ssi_table_header;
 /*
  * Each of these functions is a write-once protection wrapper
  * for the underlying data type (integer or string).  Integer
- * vectors are not tested.  
+ * vectors are not tested.
  */
-
 
 #if 0
 /*
@@ -117,32 +91,25 @@ ssiinfo_do_string(struct ctl_table *table, int write, struct file *filp,
 } /* ssiinfo_do_string */
 #endif
 
-
-static int 
-ssiinfo_do_integer(struct ctl_table *table, int write,
-		     void *buffer, size_t *lenp, loff_t *ppos)
+static int ssiinfo_do_integer(struct ctl_table *table, int write, void *buffer,
+			      size_t *lenp, loff_t *ppos)
 {
 	int *t;
 
-	t = (int*) table->data;
+	t = (int *)table->data;
 	if (write && t && (*t != -1))
-		return -EINVAL; 
+		return -EINVAL;
 
-	return proc_dointvec (table, write, buffer, lenp, ppos);
+	return proc_dointvec(table, write, buffer, lenp, ppos);
 } /* ssiinfo_do_integer */
 
-
-void
-ssi_sysctl_register(void)
+void ssi_sysctl_register(void)
 {
-    ssi_table_header = register_sysctl_table(ssi_root_table);
+	ssi_table_header = register_sysctl_table(ssi_root_table);
 } /* ssi_sysctl_register */
 
-
-void
-ssi_sysctl_unregister(void)
+void ssi_sysctl_unregister(void)
 {
-    if (ssi_table_header)
+	if (ssi_table_header)
 		unregister_sysctl_table(ssi_table_header);
 } /* ssi_sysctl_unregister */
-

@@ -26,8 +26,8 @@
 #ifndef RESOURCE_H
 #define RESOURCE_H
 
-#define MAX_PFS_NODES 4096		/* fixed maximum nodes per PFS */
-#define DEFAULT_PFS_STRIPE_SIZE 524288	/* default PFS stripe size */
+#define MAX_PFS_NODES 4096 /* fixed maximum nodes per PFS */
+#define DEFAULT_PFS_STRIPE_SIZE 524288 /* default PFS stripe size */
 
 struct ioctl_arg {
 	void *p1;

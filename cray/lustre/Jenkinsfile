@@ -1,0 +1,116 @@
+#!/usr/bin/env groovy
+
+pipeline {
+  agent {
+    // Note, this is only to ensure our agent has terraform present. The
+    // Makefile in use here expects the binary "terraform" to exist.
+    label { label "ci-dvs" }
+  }
+
+  triggers {
+    // For now feature/shared/shasta is our "master" for our purposes.
+    cron(env.BRANCH_NAME == 'feature/shared/shasta' ? 'H 1 * * *' : 'H 7 * * 1-5')
+  }
+
+  options {
+    // Keep only 14 runs total.
+    buildDiscarder(logRotator(numToKeepStr: '14'))
+  }
+
+  // Note, OS_PASSWORD and OS_USERNAME snagged through the credentials plugin
+  environment {
+    OS_AUTH_URL = 'https://craystack.us.cray.com:5000/v3'
+    OS_IDENTITY_API_VERSION = '3'
+    OS_INTERFACE = 'public'
+    OS_PROJECT_ID = 'f92d6021a4bd432395163b75698d38c3'
+    OS_PROJECT_NAME = 'ci-dvs'
+    OS_REGION_NAME = 'RegionOne'
+    OS_DOMAIN_NAME = 'Default'
+    OS_USER_DOMAIN_NAME = 'Default'
+  }
+
+  stages {
+    stage('prelude') {
+      steps {
+        script {
+          cleanWs()
+          checkout scm
+
+          // Generate a unique ssh key for terraform usage. TODO: maybe make
+          // this a variable?
+          sh "install -dm755 ${WORKSPACE}/.ssh/${BRANCH_NAME}"
+          sh "ssh-keygen -t rsa -f ${WORKSPACE}/.ssh/${BRANCH_NAME}/ssh-key-${BUILD_NUMBER}"
+          // Save our generated ssh keys in case we need to use them later on.
+          dir("${WORKSPACE}/.ssh/${BRANCH_NAME}") {
+            archiveArtifacts artifacts: "**/*${BUILD_NUMBER}*"
+          }
+          sh 'cd ${WORKSPACE}/cray/lustre && echo ssh_key_file = \\"${WORKSPACE}/.ssh/${BRANCH_NAME}/ssh-key-${BUILD_NUMBER}\\" | tee -a terraform.tfvars'
+          sh "cd ${WORKSPACE}/cray/lustre && terraform init"
+
+          sh "install -Ddm755 ${WORKSPACE}/cray/lustre/src"
+          dir("${WORKSPACE}/cray/lustre/src") {
+            git url: 'ssh://git@stash.us.cray.com:7999/lus/lustre-filesystem.git',
+                branch: 'cray-2.11',
+                credentialsId: 'cnos_jenkins_ssh'
+          }
+          sh "cd ${WORKSPACE}/cray/lustre/src && tar cvf ${WORKSPACE}/cray/lustre/lustre.tar ."
+        }
+      }
+    }
+    stage('build lustre') {
+      steps {
+        script {
+          withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'ci-dvs-user-password'
+                            , usernameVariable: 'OS_USERNAME', passwordVariable: 'OS_PASSWORD']]) {
+            dir("${WORKSPACE}/cray/lustre") {
+              sh "terraform apply -auto-approve"
+              // Save the terraform state/directories as well in case cleanup
+              // fails so we can more easily manually cleanup.
+              archiveArtifacts artifacts: "terraform.tfstate*"
+            }
+          }
+        }
+      }
+    }
+    stage('archive rpms') {
+      steps {
+        script {
+          dir("${WORKSPACE}/cray/lustre") {
+            archiveArtifacts artifacts: "sles*sp*/**/*"
+          }
+        }
+      }
+    }
+  }
+
+  post {
+    cleanup {
+      withCredentials([[$class: 'UsernamePasswordMultiBinding'
+                        , credentialsId: 'ci-dvs-user-password'
+                        , usernameVariable: 'OS_USERNAME'
+                        , passwordVariable: 'OS_PASSWORD']]) {
+        // Note, cleanup *can* fail or temporarily not work. We shouldn't assume
+        // that clean will work every time.
+        //
+        // Example:
+        // random_string.uniq: Refreshing state... (ID: XxpwX1O7)
+        // openstack_compute_secgroup_v2.network_sg: Refreshing state... (ID: 13246c40-70ed-4ea9-ae8c-8d514e7a38b6)
+        // openstack_compute_keypair_v2.terraform: Refreshing state... (ID: dvs-ssh-key-XxpwX1O7)
+        // openstack_networking_router_v2.router: Refreshing state... (ID: 8384655a-a396-4330-8394-9b72096f831e)
+        //
+        // Error: Error refreshing state: 1 error(s) occurred:
+        //
+        // * openstack_compute_secgroup_v2.network_sg: 1 error(s) occurred:
+        //
+        // * openstack_compute_secgroup_v2.network_sg: openstack_compute_secgroup_v2.network_sg: security group: The service is currently unable to handle the request due to a temporary overloading or maintenance. This is a temporary condition. Try again later.
+        //
+        // As such, retry 5 times, with an interval of 5 seconds between
+        // retries, if we can't destroy things after that length of time, a
+        // human will have to clean things up manually.
+        retry(5) {
+          sh "cd ${WORKSPACE}/cray/lustre && terraform destroy -auto-approve"
+        }
+      }
+    }
+  }
+}

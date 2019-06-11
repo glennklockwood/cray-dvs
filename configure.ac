@@ -104,6 +104,23 @@ AS_IF([test "x${with_hss}" = "xyes" -o "x${with_hss}" = "x"],
        [AC_MSG_FAILURE([invalid HSS value: $with_hss])],
       [with_hss=no])
 
+# KATLAS
+AC_ARG_WITH([katlas],
+  [AS_HELP_STRING([--with-katlas],
+  [with KATLAS support @<:@default=yes@:>@])])
+
+AS_IF([test "x${with_katlas}" = "xyes" -o "x${with_katlas}" = "x"],
+       [AC_DEFINE([USE_KATLAS], 1, [Use KATLAS])
+       PKG_CHECK_MODULES([CRAY_KATLAS], [cray-katlas],
+           [AC_SUBST([CRAY_KATLAS_INCLUDEDIR],
+                     [[`${PKG_CONFIG} --variable=includedir cray-katlas`]])])
+       AC_SUBST([USE_KATLAS], 1)
+       with_katlas=yes],
+      [test "x${with_katlas}" != "xno"],
+       [AC_MSG_FAILURE([invalid KATLAS value: $with_katlas])],
+      [with_katlas=no
+       AC_SUBST([USE_KATLAS], 0)])
+
 # RCA
 AC_ARG_WITH([rca],
   [AS_HELP_STRING([--with-rca],
@@ -209,5 +226,7 @@ AC_CONFIG_FILES([cray-dvs.pc
                  scripts/functions
                  scripts/Makefile
                  test/ioperf/Makefile
-                 test/unittest/Makefile])
+                 test/unittest/Makefile
+                 test/xattr/xattr_stress/Makefile
+                 userspace/Makefile])
 AC_OUTPUT

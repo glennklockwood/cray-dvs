@@ -26,8 +26,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-int
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
 	char *prog = basename(*argv);
 	char *name;
@@ -37,7 +36,8 @@ main(int argc, char **argv)
 	unsigned char *buf;
 	int i, n, m;
 
-	argc--; argv++;
+	argc--;
+	argv++;
 	if (argc < 1) {
 		fprintf(stderr, "Usage: %s filename\n", prog);
 		return 1;
@@ -68,7 +68,7 @@ main(int argc, char **argv)
 		perror(prog);
 		return 1;
 	}
-	for (i=0; i<n; i++) {
+	for (i = 0; i < n; i++) {
 		if ((off = lseek(fn, 0, SEEK_SET)) == (off_t)-1) {
 			perror(prog);
 			return 1;

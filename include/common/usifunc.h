@@ -22,9 +22,6 @@
  * If modifications to this file affect the libssi interface please
  * increment LIBSSI_VER in Makefile.in
  *
- *   NOTE: IF you change, add or remove anything from this file make sure that
- *         DVSNET-IF still works.  Modifiy DVSNET-IF as needed.
- *         include/dvsnet-if-usifunc.h
  */
 
 #ifndef USIFUNC_H
@@ -33,27 +30,25 @@
 /*
  * IPC operations.
  */
-enum {
-	RQ_FILE=0x100,			/* 0x100 256 */
-	RQ_REPLY,
-	RQ_RMA_GET,
-	RQ_RMA_PUT,
-	RQ_CALLBACK,
-	RQ_IPC_FAILURE,
-	RQ_RESOURCE,
-	RQ_IPC_NODE_UP,
-	RQ_REPLY_ERROR,
-	RQ_IPC_NODE_DOWN,
-	RQ_IPC_HEARTBEAT,
-	RQ_WAITING_REPLY,
-	RQ_RESOURCE_CLIENT,
-	RQ_IPC_DISPOSE,
-	RQ_SUSPECT,
-	RQ_DSD,
-	RQ_DSDB,
-	RQ_DSDC,
-	/* RQ_LAST_IN_LIST must be last */
-	RQ_LAST_IN_LIST
-};
+enum { RQ_FILE = 0x100, /* 0x100 256 */
+       RQ_REPLY,
+       RQ_RMA_GET,
+       RQ_RMA_PUT,
+       RQ_CALLBACK,
+       RQ_IPC_FAILURE,
+       RQ_RESOURCE,
+       RQ_IPC_NODE_UP,
+       RQ_REPLY_ERROR,
+       RQ_IPC_NODE_DOWN,
+       RQ_IPC_HEARTBEAT,
+       RQ_WAITING_REPLY,
+       RQ_RESOURCE_CLIENT,
+       RQ_IPC_DISPOSE,
+       RQ_SUSPECT,
+       RQ_DSD,
+       RQ_DSDB,
+       RQ_DSDC,
+       /* RQ_LAST_IN_LIST must be last */
+       RQ_LAST_IN_LIST };
 
 #endif

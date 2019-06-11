@@ -54,8 +54,7 @@ struct dsd_ops *dsd_ops = NULL;
 
 int ssi_initialized = 0;
 
-int
-dvsutil_init(void)
+int dvsutil_init(void)
 {
 	int rval;
 
@@ -68,18 +67,17 @@ dvsutil_init(void)
 
 	usi_callback = &usi_transport_callback;
 
-	if ((rval=ipc_init(&max_transport_msg_size)) < 0) {
-		printk(KERN_ERR "DVS: %s: ipc_init() failed (%d)\n", 
-			__FUNCTION__, rval);
-		return(rval);
+	if ((rval = ipc_init(&max_transport_msg_size)) < 0) {
+		printk(KERN_ERR "DVS: %s: ipc_init() failed (%d)\n",
+		       __FUNCTION__, rval);
+		return (rval);
 	}
 
 	KDEBUG_INF(0, "DVS: dvsutil module loaded");
 	return 0;
 }
 
-void
-dvsutil_exit(void)
+void dvsutil_exit(void)
 {
 	usi_callback = NULL;
 
@@ -95,12 +93,14 @@ int usi_transport_callback(int cmd, void *data)
 	if (!suser())
 		return (-EPERM);
 
-        switch (cmd) {
+	switch (cmd) {
 	case RQ_FILE:
 		if (handlers[DVSIPC_INSTANCE_DVS].receive != NULL)
 			return (*handlers[DVSIPC_INSTANCE_DVS].receive)(data);
 		else
 			return -ENOSYS;
+/* DW specific */
+#ifdef WITH_DATAWARP
 	case RQ_DSD:
 		if (handlers[DVSIPC_INSTANCE_KDWFS].receive != NULL)
 			return (*handlers[DVSIPC_INSTANCE_KDWFS].receive)(data);
@@ -108,14 +108,17 @@ int usi_transport_callback(int cmd, void *data)
 			return -ENOSYS;
 	case RQ_DSDB:
 		if (handlers[DVSIPC_INSTANCE_KDWFSB].receive != NULL)
-			return (*handlers[DVSIPC_INSTANCE_KDWFSB].receive)(data);
+			return (*handlers[DVSIPC_INSTANCE_KDWFSB].receive)(
+				data);
 		else
 			return -ENOSYS;
 	case RQ_DSDC:
 		if (handlers[DVSIPC_INSTANCE_KDWCFS].receive != NULL)
-			return (*handlers[DVSIPC_INSTANCE_KDWCFS].receive)(data);
+			return (*handlers[DVSIPC_INSTANCE_KDWCFS].receive)(
+				data);
 		else
 			return -ENOSYS;
+#endif
 	case RQ_IPC_NODE_UP:
 		for (i = 0; i < DVSIPC_INSTANCE_MAX; i++) {
 			if (handlers[i].node_up == NULL)
@@ -136,11 +139,12 @@ int usi_transport_callback(int cmd, void *data)
 		break;
 	default:
 		printk(KERN_ERR "DVS: usi_transport_callback: invalid "
-		       "request %d\n", cmd);
+				"request %d\n",
+		       cmd);
 		return -EINVAL;
 	}
 
-	return(0);
+	return (0);
 }
 
 /*
@@ -150,8 +154,8 @@ int usi_transport_callback(int cmd, void *data)
  *   provide to satisfy requests seen by this module.
  *
  */
-int
-ssiutil_register_handlers(int identity, unsigned int instance, void *function)
+int ssiutil_register_handlers(int identity, unsigned int instance,
+			      void *function)
 {
 	if (instance >= DVSIPC_INSTANCE_MAX) {
 		printk(KERN_ERR "DVS: %s: Invalid instance id %d\n", __func__,
@@ -161,40 +165,41 @@ ssiutil_register_handlers(int identity, unsigned int instance, void *function)
 	}
 
 	switch (identity) {
-		case handler_receive:
-			if (handlers[instance].receive != NULL) {
-				printk(KERN_ERR "DVS: %s: receive handler for "
-				       "instance %d already registered\n",
-				       __func__, instance);
-				return -EINVAL;
-			}
-
-			handlers[instance].receive = function;
-			break;
-		case handler_node_up:
-			if (handlers[instance].node_up != NULL) {
-				printk(KERN_ERR "DVS: %s: node up handler for "
-				       "instance %d already registered\n",
-				       __func__, instance);
-				return -EINVAL;
-			}
-
-			handlers[instance].node_up = function;
-			break;
-		case handler_node_down:
-			if (handlers[instance].node_down != NULL) {
-				printk(KERN_ERR "DVS: %s: node down handler "
-				       "for instance %d already registered\n",
-				       __func__, instance);
-				return -EINVAL;
-			}
-
-			handlers[instance].node_down = function;
-			break;
-		default:
-			printk(KERN_ERR "DVS: ssiutil_register_handlers "
-			       "failed %d 0x%p\n", identity, function);
+	case handler_receive:
+		if (handlers[instance].receive != NULL) {
+			printk(KERN_ERR "DVS: %s: receive handler for "
+					"instance %d already registered\n",
+			       __func__, instance);
 			return -EINVAL;
+		}
+
+		handlers[instance].receive = function;
+		break;
+	case handler_node_up:
+		if (handlers[instance].node_up != NULL) {
+			printk(KERN_ERR "DVS: %s: node up handler for "
+					"instance %d already registered\n",
+			       __func__, instance);
+			return -EINVAL;
+		}
+
+		handlers[instance].node_up = function;
+		break;
+	case handler_node_down:
+		if (handlers[instance].node_down != NULL) {
+			printk(KERN_ERR "DVS: %s: node down handler "
+					"for instance %d already registered\n",
+			       __func__, instance);
+			return -EINVAL;
+		}
+
+		handlers[instance].node_down = function;
+		break;
+	default:
+		printk(KERN_ERR "DVS: ssiutil_register_handlers "
+				"failed %d 0x%p\n",
+		       identity, function);
+		return -EINVAL;
 	}
 
 	return 0;
@@ -206,8 +211,8 @@ ssiutil_register_handlers(int identity, unsigned int instance, void *function)
  *   Remove handlers that have been installed by "higher-level" modules.
  *
  */
-int
-ssiutil_unregister_handlers(int identity, unsigned int instance, void *function)
+int ssiutil_unregister_handlers(int identity, unsigned int instance,
+				void *function)
 {
 	if (instance >= DVSIPC_INSTANCE_MAX) {
 		printk(KERN_ERR "DVS: %s: Invalid instance id %d\n", __func__,
@@ -217,26 +222,26 @@ ssiutil_unregister_handlers(int identity, unsigned int instance, void *function)
 	}
 
 	switch (identity) {
-		case handler_receive:
-			handlers[instance].receive = NULL;
-			break;
-		case handler_node_up:
-			handlers[instance].node_up = NULL;
-			break;
-		case handler_node_down:
-			handlers[instance].node_down = NULL;
-			break;
-		default:
-			printk(KERN_ERR "DVS: ssiutil_unregister_handlers "
-			       "failed %d 0x%p\n", identity, function);
-			return -EINVAL;
+	case handler_receive:
+		handlers[instance].receive = NULL;
+		break;
+	case handler_node_up:
+		handlers[instance].node_up = NULL;
+		break;
+	case handler_node_down:
+		handlers[instance].node_down = NULL;
+		break;
+	default:
+		printk(KERN_ERR "DVS: ssiutil_unregister_handlers "
+				"failed %d 0x%p\n",
+		       identity, function);
+		return -EINVAL;
 	}
 
 	return 0;
 }
 
-int
-register_dsd_ops(struct dsd_ops *ops)
+int register_dsd_ops(struct dsd_ops *ops)
 {
 	if (ops == NULL) {
 		printk(KERN_ERR "DVS: %s: Invalid dsd_ops 0x%p\n", __func__,
@@ -255,8 +260,7 @@ register_dsd_ops(struct dsd_ops *ops)
 	return 0;
 }
 
-int
-unregister_dsd_ops(struct dsd_ops *ops)
+int unregister_dsd_ops(struct dsd_ops *ops)
 {
 	if (dsd_ops != ops) {
 		printk(KERN_ERR "DVS: %s: dsd_ops 0x%p not registered\n",
@@ -269,30 +273,31 @@ unregister_dsd_ops(struct dsd_ops *ops)
 	return 0;
 }
 
-int
-get_dwfs_path(struct file *file, struct dwfs_open_info *dwfs_info)
+int get_dwfs_path(struct file *file, struct dwfs_open_info *dwfs_info)
 {
 	if (dsd_ops == NULL || dsd_ops->get_dsd_path == NULL) {
 		printk(KERN_ERR "DVS: %s: No DSD operations registered. Path "
-		       "for DWFS data files not initialized\n", __func__);
+				"for DWFS data files not initialized\n",
+		       __func__);
 		return -EINVAL;
 	}
 
-	return dsd_ops->get_dsd_path(file, dwfs_info->path, dwfs_info->path_len);
+	return dsd_ops->get_dsd_path(file, dwfs_info->path,
+				     dwfs_info->path_len);
 }
 
-int
-get_dwfs_bcstripe(struct file *file, struct dwfs_open_info *dwfs_info)
+int get_dwfs_bcstripe(struct file *file, struct dwfs_open_info *dwfs_info)
 {
 	if (dsd_ops == NULL || dsd_ops->get_dsd_bcstripe_path == NULL) {
 		printk(KERN_ERR "DVS: %s: No DSD operations registered. Path "
-		       "for DSD data files not initialized\n", __func__);
+				"for DSD data files not initialized\n",
+		       __func__);
 		return -EINVAL;
 	}
 
-	return dsd_ops->get_dsd_bcstripe_path(file, &dwfs_info->bcstripe,
-	                                      dwfs_info->path + dwfs_info->path_len,
-	                                      dwfs_info->path_len);
+	return dsd_ops->get_dsd_bcstripe_path(
+		file, &dwfs_info->bcstripe,
+		dwfs_info->path + dwfs_info->path_len, dwfs_info->path_len);
 }
 
 EXPORT_SYMBOL(usi_transport_callback);

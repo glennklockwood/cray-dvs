@@ -27,8 +27,7 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 
-int
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
 	char *prog = basename(*argv);
 	char *name;
@@ -39,7 +38,8 @@ main(int argc, char **argv)
 	unsigned char *buf;
 	struct stat sb;
 
-	argc--; argv++;
+	argc--;
+	argv++;
 	if (argc < 1) {
 		fprintf(stderr, "Usage: %s filename [size [offset]]\n", prog);
 		return 1;
@@ -49,7 +49,7 @@ main(int argc, char **argv)
 	off = (argc > 2) ? strtol(argv[2], NULL, 0) : 0;
 	printf("%s: mmap %ld bytes, offset %ld\n", name, siz, off);
 
-	if ((fn = open(name, O_CREAT|O_RDWR, mode)) < 0) {
+	if ((fn = open(name, O_CREAT | O_RDWR, mode)) < 0) {
 		perror(prog);
 		return 1;
 	}
@@ -69,7 +69,7 @@ main(int argc, char **argv)
 		siz = 1024;
 		printf("%s: file size %ld\n", name, siz);
 	}
-	buf = mmap(0, siz, PROT_READ|PROT_WRITE, MAP_SHARED, fn, off);
+	buf = mmap(0, siz, PROT_READ | PROT_WRITE, MAP_SHARED, fn, off);
 	if (buf == MAP_FAILED) {
 		perror(prog);
 		return 1;

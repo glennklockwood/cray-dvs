@@ -1,0 +1,12 @@
+diff --git a/kernel/dvsproc/sys_setup.c b/kernel/dvsproc/sys_setup.c
+index 8beeebab..56ded205 100644
+--- a/kernel/dvsproc/sys_setup.c
++++ b/kernel/dvsproc/sys_setup.c
+@@ -73,6 +73,7 @@ EXPORT_SYMBOL(quiesce_barrier_rwsem);
+ static const char patches[] = "\0"
+                               /* PATCH START */
+                               "t1000-sys-fs-dvs-patches.t\0"
++                              "t1001-sys-fs-dvs-patches-test.t\0"
+                               /* PATCH END */
+                               "\0";
+ 

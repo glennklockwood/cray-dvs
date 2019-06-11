@@ -1,7 +1,7 @@
 /*
  * Unpublished Work  2003 Unlimited Scale, Inc.  All rights reserved.
  * Unpublished Work  2004 Cassatt Corporation    All rights reserved.
- * Copyright 2015-2017 Cray Inc. All Rights Reserved.
+ * Copyright 2015-2018 Cray Inc. All Rights Reserved.
  *
  * This file is part of Cray Data Virtualization Service (DVS).
  *
@@ -39,16 +39,17 @@
 #include "common/log.h"
 #include "common/kernel/kernel_interface.h"
 #include "dvs/kernel/usifile.h"
+#include "dvs/dvs_config.h"
 #include "dvsipc_msg_queue.h"
 #include "dvsipc_threads.h"
 
-static void msgq_add_to_qlist(struct msgq_qheader **qlist, struct msgq_qheader *qhdr);
+static void msgq_add_to_qlist(struct msgq_qheader **qlist,
+			      struct msgq_qheader *qhdr);
 static void msgq_free_qlist(struct msgq_qheader **qlist, atomic_t *queue_cnt);
 static int dvsipc_inmsgq_thread(void *arg);
 static void msgq_free_idle_qheader(unsigned long arg);
 
-int
-dvsipc_start_incoming_msgq(struct dvsipc_incoming_msgq *inmsgq)
+int dvsipc_start_incoming_msgq(struct dvsipc_incoming_msgq *inmsgq)
 {
 	struct task_struct *task;
 
@@ -56,29 +57,30 @@ dvsipc_start_incoming_msgq(struct dvsipc_incoming_msgq *inmsgq)
 		return 0;
 
 	task = kthread_run(dvsipc_inmsgq_thread, (void *)inmsgq, "%s",
-	                   inmsgq->thread_name);
+			   inmsgq->thread_name);
 	if (IS_ERR(task)) {
 		printk(KERN_ERR "DVS: %s: couldn't start inmsgq thread %s. "
-		       "Error %ld\n", __func__, inmsgq->thread_name,
-		       PTR_ERR(task));
+				"Error %ld\n",
+		       __func__, inmsgq->thread_name, PTR_ERR(task));
 		return (int)PTR_ERR(task);
 	}
 
 	return 0;
 }
 
-struct dvsipc_incoming_msgq *
-dvsipc_create_incoming_msgq(const char *thread_name, unsigned int init_free_qhdrs,
-                            unsigned int max_free_qhdrs, int single_msg_queue,
-                            msgq_key_t (*get_queue_key)(struct dvsipc_incoming_msgq *inmsgq,
-                                                        struct usiipc *msg))
+struct dvsipc_incoming_msgq *dvsipc_create_incoming_msgq(
+	const char *thread_name, unsigned int init_free_qhdrs,
+	unsigned int max_free_qhdrs, int single_msg_queue,
+	msgq_key_t (*get_queue_key)(struct dvsipc_incoming_msgq *inmsgq,
+				    struct usiipc *msg))
 {
 	struct dvsipc_incoming_msgq *inmsgq;
 
 	inmsgq = kmalloc_ssi(sizeof(struct dvsipc_incoming_msgq), GFP_KERNEL);
 	if (inmsgq == NULL) {
 		printk("DVS: %s: Error: Unable to allocate incoming message "
-		       "queue\n", __func__);
+		       "queue\n",
+		       __func__);
 		return NULL;
 	}
 
@@ -103,11 +105,13 @@ dvsipc_create_incoming_msgq(const char *thread_name, unsigned int init_free_qhdr
 	atomic_set(&inmsgq->total_qcnt, 0);
 	atomic_set(&inmsgq->freepool_qcnt, 0);
 
-	inmsgq->htb = vmalloc_ssi((sizeof(msgq_htb_t)) +
-	                          (sizeof(msgq_htbheader_t) * (INMSGQ_HT_BUCKETS + 1)));
+	inmsgq->htb =
+		vmalloc_ssi((sizeof(msgq_htb_t)) + (sizeof(msgq_htbheader_t) *
+						    (INMSGQ_HT_BUCKETS + 1)));
 	if (inmsgq->htb == NULL) {
 		printk("DVS: %s: Error: Unable to allocate hash table for "
-		       "inmsgq 0x%p\n", __func__, inmsgq);
+		       "inmsgq 0x%p\n",
+		       __func__, inmsgq);
 		goto out_error;
 	}
 	inmsgq->htb->numbits = INMSGQ_HT_BITS;
@@ -117,7 +121,8 @@ dvsipc_create_incoming_msgq(const char *thread_name, unsigned int init_free_qhdr
 	msgq_grow_freepool(inmsgq->init_free_qhdrs, inmsgq);
 	if (atomic_read(&inmsgq->freepool_qcnt) != inmsgq->init_free_qhdrs) {
 		printk("DVS: %s: Error: Could not allocate free pool msgq "
-		       "headers for inmsgq 0x%p\n", __func__, inmsgq);
+		       "headers for inmsgq 0x%p\n",
+		       __func__, inmsgq);
 		goto out_error;
 	}
 	DEBUG_QHEADER("inmsgq 0x%p: freepool allocated", inmsgq->freepool_list);
@@ -126,10 +131,11 @@ dvsipc_create_incoming_msgq(const char *thread_name, unsigned int init_free_qhdr
 	 * Set up list of queues with one general purpose queue to use
 	 * if/when a new queue cannot be created.
 	 */
-	inmsgq->anykey_hdr = msgq_alloc_qheader(inmsgq); 
+	inmsgq->anykey_hdr = msgq_alloc_qheader(inmsgq);
 	if (inmsgq->anykey_hdr == NULL) {
 		printk("DVS: %s: Error: Could not allocated anykey header for "
-		       "inmsgq 0x%p\n", __func__, inmsgq);
+		       "inmsgq 0x%p\n",
+		       __func__, inmsgq);
 		goto out_error;
 	}
 
@@ -144,8 +150,7 @@ out_error:
 	return NULL;
 }
 
-void
-dvsipc_remove_incoming_msgq(struct dvsipc_incoming_msgq *inmsgq)
+void dvsipc_remove_incoming_msgq(struct dvsipc_incoming_msgq *inmsgq)
 {
 	msgq_free_qlist(&inmsgq->current_list, &inmsgq->total_qcnt);
 	msgq_free_qlist(&inmsgq->freepool_list, &inmsgq->freepool_qcnt);
@@ -154,8 +159,7 @@ dvsipc_remove_incoming_msgq(struct dvsipc_incoming_msgq *inmsgq)
 	kfree_ssi(inmsgq);
 }
 
-void
-dvsipc_stop_incoming_msgq(struct dvsipc_incoming_msgq *inmsgq)
+void dvsipc_stop_incoming_msgq(struct dvsipc_incoming_msgq *inmsgq)
 {
 	inmsgq->stop_thread = 1;
 
@@ -165,8 +169,7 @@ dvsipc_stop_incoming_msgq(struct dvsipc_incoming_msgq *inmsgq)
 	}
 }
 
-static inline void
-msgq_init_qheader(struct msgq_qheader *qhdr)
+static inline void msgq_init_qheader(struct msgq_qheader *qhdr)
 {
 	qhdr->htb_key = 0;
 	qhdr->next_htb_chain = NULL;
@@ -177,31 +180,32 @@ msgq_init_qheader(struct msgq_qheader *qhdr)
 	qhdr->msgq_tail = NULL;
 }
 
-struct msgq_qheader *
-msgq_alloc_qheader(struct dvsipc_incoming_msgq *inmsgq)
+struct msgq_qheader *msgq_alloc_qheader(struct dvsipc_incoming_msgq *inmsgq)
 {
 	struct msgq_qheader *qhdr;
 
 	qhdr = kmalloc_ssi(sizeof(msgq_qheader_t), GFP_ATOMIC);
 	if (qhdr == NULL) {
-		KDEBUG_IPC(0, "DVS: %s: Failed to allocate message queue header "
-		           "(ENOMEM).\n", __func__);
+		KDEBUG_IPC(0,
+			   "DVS: %s: Failed to allocate message queue header "
+			   "(ENOMEM).\n",
+			   __func__);
 	} else {
 		msgq_init_qheader(qhdr);
 		qhdr->inmsgq = inmsgq;
-		setup_timer(&qhdr->idle_timer, msgq_free_idle_qheader, 
-		            (unsigned long)((void *)qhdr));
+		setup_timer(&qhdr->idle_timer, msgq_free_idle_qheader,
+			    (unsigned long)((void *)qhdr));
 		atomic_inc(&inmsgq->total_qcnt);
 	}
 
 	return qhdr;
 }
 
-static void
-msgq_free_qheader(struct msgq_qheader *qhdr)
+static void msgq_free_qheader(struct msgq_qheader *qhdr)
 {
 	if (qhdr->msgq_head != NULL) {
-		printk(KERN_ERR "DVS: %s: Attempt to free queue with "
+		printk(KERN_ERR
+		       "DVS: %s: Attempt to free queue with "
 		       "unprocessed messages; qhdr = 0x%p; msg = 0x%p\n",
 		       __func__, qhdr, qhdr->msgq_head);
 	}
@@ -211,8 +215,7 @@ msgq_free_qheader(struct msgq_qheader *qhdr)
 }
 
 /* Add a qheader to the end of the specified qlist */
-void
-msgq_add_to_qlist(struct msgq_qheader **qlist, struct msgq_qheader *qhdr)
+void msgq_add_to_qlist(struct msgq_qheader **qlist, struct msgq_qheader *qhdr)
 {
 	if (*qlist == NULL) {
 		qhdr->next_queue = qhdr;
@@ -229,8 +232,8 @@ msgq_add_to_qlist(struct msgq_qheader **qlist, struct msgq_qheader *qhdr)
 }
 
 /* Remove the specified queue header from the queue list */
-static void
-msgq_remove_from_qlist(struct msgq_qheader **qlist, struct msgq_qheader *qhdr)
+static void msgq_remove_from_qlist(struct msgq_qheader **qlist,
+				   struct msgq_qheader *qhdr)
 {
 	if (*qlist == qhdr) {
 		*qlist = qhdr->next_queue;
@@ -248,8 +251,7 @@ msgq_remove_from_qlist(struct msgq_qheader **qlist, struct msgq_qheader *qhdr)
 }
 
 /* Free all memory associated with a specified queue list */
-static void
-msgq_free_qlist(struct msgq_qheader **qlist, atomic_t *queue_cnt)
+static void msgq_free_qlist(struct msgq_qheader **qlist, atomic_t *queue_cnt)
 {
 	struct msgq_qheader *qhdr;
 	struct msgq_qheader *next;
@@ -266,8 +268,7 @@ msgq_free_qlist(struct msgq_qheader **qlist, atomic_t *queue_cnt)
 }
 
 /* Adds specified number of queue headers to freepool if possible */
-void
-msgq_grow_freepool(int count, struct dvsipc_incoming_msgq *inmsgq)
+void msgq_grow_freepool(int count, struct dvsipc_incoming_msgq *inmsgq)
 {
 	struct msgq_qheader *qhdr;
 	unsigned long flags;
@@ -275,8 +276,8 @@ msgq_grow_freepool(int count, struct dvsipc_incoming_msgq *inmsgq)
 
 	KDEBUG_IPC(0, "DVS: %s: Grow count %d\n", __func__, count);
 	for (idx = 0; idx < count; idx++) {
-		qhdr = msgq_alloc_qheader(inmsgq); 
-		if (qhdr != NULL) { 
+		qhdr = msgq_alloc_qheader(inmsgq);
+		if (qhdr != NULL) {
 			spin_lock_irqsave(&inmsgq->freepool_sl, flags);
 			msgq_add_to_qlist(&inmsgq->freepool_list, qhdr);
 			spin_unlock_irqrestore(&inmsgq->freepool_sl, flags);
@@ -286,8 +287,7 @@ msgq_grow_freepool(int count, struct dvsipc_incoming_msgq *inmsgq)
 }
 
 /* Frees specified number of queue headers from freepool if possible */
-void 
-msgq_shrink_freepool(int count, struct dvsipc_incoming_msgq *inmsgq)
+void msgq_shrink_freepool(int count, struct dvsipc_incoming_msgq *inmsgq)
 {
 	unsigned long flags;
 	struct msgq_qheader *qhdr;
@@ -312,8 +312,7 @@ msgq_shrink_freepool(int count, struct dvsipc_incoming_msgq *inmsgq)
 	}
 }
 
-static inline void
-msgq_add_to_htb(struct msgq_qheader *qhdr, msgq_key_t key)
+static inline void msgq_add_to_htb(struct msgq_qheader *qhdr, msgq_key_t key)
 {
 	struct dvsipc_incoming_msgq *inmsgq;
 	int32_t hash;
@@ -322,7 +321,7 @@ msgq_add_to_htb(struct msgq_qheader *qhdr, msgq_key_t key)
 	hash = MSGQ_HASH(key, inmsgq);
 
 	KDEBUG_IPC(0, "DVS: %s: inmsgq 0x%p, qhdr 0x%p, key %ld, hash %d\n",
-	           __func__, inmsgq, qhdr, (long int)key, hash);
+		   __func__, inmsgq, qhdr, (long int)key, hash);
 
 	qhdr->htb_key = key;
 	qhdr->next_htb_chain = inmsgq->htb->buckets[hash].qhdr;
@@ -333,8 +332,7 @@ msgq_add_to_htb(struct msgq_qheader *qhdr, msgq_key_t key)
 	inmsgq->htb->buckets[hash].qhdr = qhdr;
 }
 
-static inline void
-msgq_remove_from_htb(struct msgq_qheader *qhdr)
+static inline void msgq_remove_from_htb(struct msgq_qheader *qhdr)
 {
 	struct dvsipc_incoming_msgq *inmsgq;
 
@@ -356,8 +354,7 @@ msgq_remove_from_htb(struct msgq_qheader *qhdr)
  * Removes a queue header from the hash table and list of active
  * queues; adds qhdr to freepool. Caller must hold incomingq_sl lock.
  */
-static void
-msgq_remove_qheader(struct msgq_qheader *qhdr)
+static void msgq_remove_qheader(struct msgq_qheader *qhdr)
 {
 	struct dvsipc_incoming_msgq *inmsgq;
 	unsigned long flags;
@@ -383,7 +380,7 @@ msgq_remove_qheader(struct msgq_qheader *qhdr)
 
 /*
  * Move a free qheader to the hash table and qlist. Caller
- * must hold incomingq_sl lock. 
+ * must hold incomingq_sl lock.
  */
 static inline struct msgq_qheader *
 msgq_get_new_qheader(msgq_key_t key, struct dvsipc_incoming_msgq *inmsgq)
@@ -394,7 +391,8 @@ msgq_get_new_qheader(msgq_key_t key, struct dvsipc_incoming_msgq *inmsgq)
 	spin_lock_irqsave(&inmsgq->freepool_sl, flags);
 	if (inmsgq->freepool_list == NULL) {
 		spin_unlock_irqrestore(&inmsgq->freepool_sl, flags);
-		up(&inmsgq->thread_sema); /* repopulate freepool in background */
+		up(&inmsgq->thread_sema); /* repopulate freepool in background
+					   */
 
 		KDEBUG_IPC(0, "DVS: %s: msgq freepool empty \n", __func__);
 		qhdr = msgq_alloc_qheader(inmsgq);
@@ -417,11 +415,10 @@ msgq_get_new_qheader(msgq_key_t key, struct dvsipc_incoming_msgq *inmsgq)
 }
 
 /*
- * Does a round robin search for the next incoming queue with 
+ * Does a round robin search for the next incoming queue with
  * a message that needs to be processed.
  */
-struct msgq_qheader *
-msgq_get_next_queue(struct dvsipc_incoming_msgq *inmsgq)
+struct msgq_qheader *msgq_get_next_queue(struct dvsipc_incoming_msgq *inmsgq)
 {
 	struct msgq_qheader *qhdr;
 
@@ -439,12 +436,11 @@ msgq_get_next_queue(struct dvsipc_incoming_msgq *inmsgq)
 	return qhdr;
 }
 
-/* 
- * Removes queue header from active list if no messages have 
+/*
+ * Removes queue header from active list if no messages have
  * arrived on the queue since the timer was set
  */
-static void
-msgq_free_idle_qheader(unsigned long arg)
+static void msgq_free_idle_qheader(unsigned long arg)
 {
 	struct dvsipc_incoming_msgq *inmsgq;
 	unsigned long flags;
@@ -457,7 +453,7 @@ msgq_free_idle_qheader(unsigned long arg)
 	if (qhdr->msgq_head == NULL) {
 		/* queue is inactive so move to freepool */
 		KDEBUG_IPC(0, "DVS: %s, Found idle queue. qhdr 0x%p now %lu\n",
-		           __func__, qhdr, jiffies);
+			   __func__, qhdr, jiffies);
 		msgq_remove_qheader(qhdr);
 	}
 	spin_unlock_irqrestore(&inmsgq->lock, flags);
@@ -467,10 +463,9 @@ msgq_free_idle_qheader(unsigned long arg)
  * Sets time when idle queue timer will trigger; timer struct
  * is initialized when queue header is allocated
  */
-void
-msgq_set_idle_qheader_timer(struct msgq_qheader *qhdr)
+void msgq_set_idle_qheader_timer(struct msgq_qheader *qhdr)
 {
-	unsigned long reset_interval = DVSIPC_INMSGQ_TIMEOUT/2;
+	unsigned long reset_interval = DVSIPC_INMSGQ_TIMEOUT / 2;
 	unsigned long expire;
 
 	if (qhdr == qhdr->inmsgq->anykey_hdr)
@@ -484,19 +479,22 @@ msgq_set_idle_qheader_timer(struct msgq_qheader *qhdr)
 	 */
 	if (timer_pending(&qhdr->idle_timer) &&
 	    time_after(qhdr->idle_timer.expires, expire - reset_interval)) {
-		KDEBUG_IPC(0, "DVS: %s: Skip idle timer, qhdr 0x%p, now %lu, cur "
-		           "%lu, new %lu\n", __func__, qhdr, jiffies,
-		           qhdr->idle_timer.expires, expire);
+		KDEBUG_IPC(0,
+			   "DVS: %s: Skip idle timer, qhdr 0x%p, now %lu, cur "
+			   "%lu, new %lu\n",
+			   __func__, qhdr, jiffies, qhdr->idle_timer.expires,
+			   expire);
 		return;
 	}
 
 	mod_timer(&(qhdr->idle_timer), expire);
-	KDEBUG_IPC(0, "DVS: %s: Set idle timer, qhdr 0x%p, now %lu, expires %lu\n",
-	           __func__, qhdr, jiffies, expire);
+	KDEBUG_IPC(0,
+		   "DVS: %s: Set idle timer, qhdr 0x%p, now %lu, expires %lu\n",
+		   __func__, qhdr, jiffies, expire);
 }
 
-msgq_key_t
-dvsipc_get_queue_key(struct dvsipc_incoming_msgq *inmsgq, struct usiipc *msg)
+msgq_key_t dvsipc_get_queue_key(struct dvsipc_incoming_msgq *inmsgq,
+				struct usiipc *msg)
 {
 	if (msg->command != RQ_FILE)
 		return -1;
@@ -504,8 +502,8 @@ dvsipc_get_queue_key(struct dvsipc_incoming_msgq *inmsgq, struct usiipc *msg)
 	return GET_INMSGQ_KEY(msg);
 }
 
-int
-dvsipc_add_msg_to_qheader(struct dvsipc_incoming_msgq *inmsgq, struct usiipc *msg)
+int dvsipc_add_msg_to_qheader(struct dvsipc_incoming_msgq *inmsgq,
+			      struct usiipc *msg)
 {
 	struct msgq_qheader *qhdr;
 	unsigned long flags;
@@ -521,7 +519,7 @@ dvsipc_add_msg_to_qheader(struct dvsipc_incoming_msgq *inmsgq, struct usiipc *ms
 		hash = MSGQ_HASH(key, inmsgq);
 
 	KDEBUG_IPC(0, "DVS: %s: msg 0x%p, key 0x%lx, hash %d\n", __FUNCTION__,
-	           msg, (long int)key, hash);
+		   msg, (long int)key, hash);
 
 	spin_lock_irqsave(&inmsgq->lock, flags);
 
@@ -545,7 +543,7 @@ dvsipc_add_msg_to_qheader(struct dvsipc_incoming_msgq *inmsgq, struct usiipc *ms
 
 found:
 	add_to_queue(&(qhdr->msgq_head), &(qhdr->msgq_tail), NULL,
-	             &inmsgq->sema, msg);
+		     &inmsgq->sema, msg);
 	msg->state = ST_SV_MSG_QUEUED;
 	spin_unlock_irqrestore(&inmsgq->lock, flags);
 
@@ -555,8 +553,7 @@ found:
 	return 0;
 }
 
-static void
-wakeup_inmsgq_thread(unsigned long arg)
+static void wakeup_inmsgq_thread(unsigned long arg)
 {
 	struct dvsipc_incoming_msgq *inmsgq;
 
@@ -568,8 +565,7 @@ wakeup_inmsgq_thread(unsigned long arg)
  * Manages the incoming message queue freepool; moves inactive
  * queues to freepool.
  */
-static int
-dvsipc_inmsgq_thread(void *arg)
+static int dvsipc_inmsgq_thread(void *arg)
 {
 	struct dvsipc_incoming_msgq *inmsgq;
 	int count;
@@ -580,7 +576,7 @@ dvsipc_inmsgq_thread(void *arg)
 
 	while (!inmsgq->stop_thread) {
 		thread_wait(DVSIPC_INMSGQ_TIMEOUT, &inmsgq->thread_sema,
-		            wakeup_inmsgq_thread, (unsigned long)inmsgq);
+			    wakeup_inmsgq_thread, (unsigned long)inmsgq);
 
 		/* Immediate need for more free queue headers */
 		count = atomic_read(&inmsgq->freepool_qcnt);
@@ -592,7 +588,7 @@ dvsipc_inmsgq_thread(void *arg)
 
 		/* Don't let the free pool get too large */
 		count = atomic_read(&inmsgq->freepool_qcnt) -
-		                    inmsgq->max_free_qhdrs;
+			inmsgq->max_free_qhdrs;
 		if (count > 0 && !inmsgq->stop_thread)
 			msgq_shrink_freepool(count, inmsgq);
 	}

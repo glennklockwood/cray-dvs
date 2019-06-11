@@ -28,11 +28,11 @@
 #endif /* __KERNEL__ */
 
 struct ioctl_desc {
-	char	*cmd_name;	/* string for command */
-	unsigned int cmd;	/* IOCTL cmd */
-	int 	arg_size;	/* Size of argument or reference */
-	char	arg_is_ref:1;	/* Passed by value or reference */
-	char	arg_rw:1;	/* Passed by reference and not const */
+	char *cmd_name; /* string for command */
+	unsigned int cmd; /* IOCTL cmd */
+	int arg_size; /* Size of argument or reference */
+	char arg_is_ref : 1; /* Passed by value or reference */
+	char arg_rw : 1; /* Passed by reference and not const */
 };
 
 extern struct ioctl_desc *get_ioctl_desc(int cmd);

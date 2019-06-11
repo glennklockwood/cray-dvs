@@ -27,44 +27,42 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-static struct option longopts[] = {
-	{"chunk",  required_argument, NULL, 'c'},
-	{"flags",  required_argument, NULL, 'f'},
-	{"gap",    required_argument, NULL, 'g'},
-	{"mode",   required_argument, NULL, 'm'},
-	{"number", required_argument, NULL, 'n'},
-	{"offset", required_argument, NULL, 'o'},
-	{"size",   required_argument, NULL, 's'},
-	{"value",  required_argument, NULL, 'v'},
-	{0,0,0,0}
-};
+static struct option longopts[] = { { "chunk", required_argument, NULL, 'c' },
+				    { "flags", required_argument, NULL, 'f' },
+				    { "gap", required_argument, NULL, 'g' },
+				    { "mode", required_argument, NULL, 'm' },
+				    { "number", required_argument, NULL, 'n' },
+				    { "offset", required_argument, NULL, 'o' },
+				    { "size", required_argument, NULL, 's' },
+				    { "value", required_argument, NULL, 'v' },
+				    { 0, 0, 0, 0 } };
 
-static int
-usage(const char *prog)
+static int usage(const char *prog)
 {
-static	char *syntax =
-	"Usage: %s [options] filename\n"
-	"  --number=count   total number of files to auto-generate\n"
-	"  --size=bytes     total size of file to write\n"
-	"  --offset=bytes   starting offset\n"
-	"  --chunk=bytes    individual write size\n"
-	"  --gap=bytes      bytes to skip between writes\n"
-	"  --value=byteval  integer value byte value to write\n"
-	"  --mode=modeval   integer value for the file mode to create\n"
-	"  --flags=flag,... list of rdonly,wronly,rdwr,creat,excl,trunc\n";
+	static char *syntax =
+		"Usage: %s [options] filename\n"
+		"  --number=count   total number of files to auto-generate\n"
+		"  --size=bytes     total size of file to write\n"
+		"  --offset=bytes   starting offset\n"
+		"  --chunk=bytes    individual write size\n"
+		"  --gap=bytes      bytes to skip between writes\n"
+		"  --value=byteval  integer value byte value to write\n"
+		"  --mode=modeval   integer value for the file mode to create\n"
+		"  --flags=flag,... list of rdonly,wronly,rdwr,creat,excl,trunc\n";
 	fprintf(stderr, syntax, prog);
 	return 1;
 }
 
-static int
-_parseflags(char *options)
+static int _parseflags(char *options)
 {
 	int flags = 0;
 	char *p = options;
 
 	while (*p) {
-		while (*p && *p != ',') p++;
-		if (*p) *p++ = 0;
+		while (*p && *p != ',')
+			p++;
+		if (*p)
+			*p++ = 0;
 		if (!strcmp(options, "rdonly")) {
 			flags |= O_RDONLY;
 		} else if (!strcmp(options, "wronly")) {
@@ -85,33 +83,50 @@ _parseflags(char *options)
 	return flags;
 }
 
-int
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
 	char *prog = basename(*argv);
 	unsigned char *buf;
-	size_t chunk  = 0;
-	size_t gap    = 0;
-	size_t size   = 1024;
-	off_t  offset = 0;
+	size_t chunk = 0;
+	size_t gap = 0;
+	size_t size = 1024;
+	off_t offset = 0;
 	int number = 0;
 	int bval = 0xa5;
 	int mode = 0644;
-	int flags = O_RDWR|O_CREAT|O_TRUNC;
+	int flags = O_RDWR | O_CREAT | O_TRUNC;
 	int index;
 	int opt;
 
-	while ((opt = getopt_long(argc, argv, "c:f:g:m:o:s:v:", longopts, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "c:f:g:m:o:s:v:", longopts,
+				  NULL)) != -1) {
 		switch (opt) {
-		case 'c': chunk  = strtol(optarg, NULL, 0); break;
-		case 'g': gap    = strtol(optarg, NULL, 0); break;
-		case 'm': mode   = strtol(optarg, NULL, 0); break;
-		case 'n': number = strtol(optarg, NULL, 0); break;
-		case 'o': offset = strtol(optarg, NULL, 0); break;
-		case 's': size   = strtol(optarg, NULL, 0); break;
-		case 'v': bval   = strtol(optarg, NULL, 0); break;
-		case 'f': flags  = _parseflags(optarg); break;
-		default: return usage(prog);
+		case 'c':
+			chunk = strtol(optarg, NULL, 0);
+			break;
+		case 'g':
+			gap = strtol(optarg, NULL, 0);
+			break;
+		case 'm':
+			mode = strtol(optarg, NULL, 0);
+			break;
+		case 'n':
+			number = strtol(optarg, NULL, 0);
+			break;
+		case 'o':
+			offset = strtol(optarg, NULL, 0);
+			break;
+		case 's':
+			size = strtol(optarg, NULL, 0);
+			break;
+		case 'v':
+			bval = strtol(optarg, NULL, 0);
+			break;
+		case 'f':
+			flags = _parseflags(optarg);
+			break;
+		default:
+			return usage(prog);
 		}
 	}
 	argc -= optind;
@@ -120,7 +135,7 @@ main(int argc, char **argv)
 	if (argc < 1) {
 		return usage(prog);
 	}
-	if (! chunk || chunk > size)
+	if (!chunk || chunk > size)
 		chunk = size;
 
 	index = 0;
@@ -131,24 +146,30 @@ main(int argc, char **argv)
 		int fn;
 
 		if (index < number) {
-			snprintf(filename, sizeof(filename), "%s.%d", *argv, index);
+			snprintf(filename, sizeof(filename), "%s.%d", *argv,
+				 index);
 			if (++index >= number) {
-				argc--; argv++;
+				argc--;
+				argv++;
 			}
 		} else {
 			snprintf(filename, sizeof(filename), "%s", *argv);
-			argc--; argv++;
+			argc--;
+			argv++;
 		}
 		if ((fn = open(filename, flags, mode)) < 0) {
 			perror(prog);
-			fprintf(stderr, "open(%s,0x%x) == %d, failed\n", filename, flags, fn);
+			fprintf(stderr, "open(%s,0x%x) == %d, failed\n",
+				filename, flags, fn);
 			return 1;
 		}
 		memset(buf, bval, chunk);
 		while (offset < size) {
 			if ((len = pwrite(fn, buf, chunk, offset)) != chunk) {
 				perror(prog);
-				fprintf(stderr, "pwrite(%ld,%ld) == %ld, failed\n", chunk, offset, len);
+				fprintf(stderr,
+					"pwrite(%ld,%ld) == %ld, failed\n",
+					chunk, offset, len);
 				return 1;
 			}
 			offset += chunk + gap;

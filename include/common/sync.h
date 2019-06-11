@@ -45,7 +45,7 @@ struct fsync_thread_info {
 	volatile unsigned int run;
 	struct task_struct *task;
 };
-	
+
 struct ssi_server_info {
 	struct list_head list;
 	struct list_head rf_list;
@@ -79,18 +79,22 @@ int sync_add_inode_ref(struct remote_ref *rr);
 void sync_remove_inode_ref(struct remote_ref *rr);
 void sync_server_data_written(struct remote_ref *rr);
 void sync_client_sync_update(long delta, long start, struct remote_file *rf);
-void sync_server_bulk_update(unsigned long *inodes, unsigned long *sync_times, int size);
+void sync_server_bulk_update(unsigned long *inodes, unsigned long *sync_times,
+			     int size);
 int fsync_inode_ref(struct inode_ref *ir, struct remote_ref *rr);
 int sync_is_inode_dirty(struct remote_ref *rr);
 extern void sync_server_enable_sync(void);
 extern void sync_client_data_written(struct remote_file *rf);
-extern int sync_client_add_server(int node, int flags, struct incore_upfs_super_block *icsb);
+extern int sync_client_add_server(int node, int flags,
+				  struct incore_upfs_super_block *icsb);
 extern int sync_client_check_dirty(int node, struct file *fp);
 
 #ifdef SYNC_DEBUG
 #define SYNC_LOG(args...) DVS_LOG(args)
 #else
-#define SYNC_LOG(args...) do { } while (0)
+#define SYNC_LOG(args...)                                                      \
+	do {                                                                   \
+	} while (0)
 #endif
 
 #define SYNC_SERVER_NOSYNC 0x01
@@ -101,7 +105,8 @@ extern int sync_client_check_dirty(int node, struct file *fp);
 #define SYNC_MAX_FSYNC_THREADS 32
 #define SYNC_MAX_HASH_SIZE 4096
 
-#define rf_inode(rf) ((rf && rf->finfo && rf->finfo->fp &&			\
-                       file_inode(rf->finfo->fp)) ? 				\
-                       file_inode(rf->finfo->fp)->i_ino : -1)
+#define rf_inode(rf)                                                           \
+	((rf && rf->finfo && rf->finfo->fp && file_inode(rf->finfo->fp)) ?     \
+		 file_inode(rf->finfo->fp)->i_ino :                            \
+		 -1)
 #endif

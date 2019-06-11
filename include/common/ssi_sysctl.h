@@ -18,7 +18,7 @@
  * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-/* 
+/*
  * Attributes maintained within the /proc/sys/fs/dvs namespace,
  * which may be of interest to other kernel modules (especially
  * the SSI infrastructure).
@@ -29,7 +29,7 @@
 #define __SSI_SYSCTL_H__
 
 /* vars */
-extern int  ssi_nodeid;
+extern int ssi_nodeid;
 
 /* functions */
 extern void ssi_sysctl_register(void);

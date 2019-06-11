@@ -37,17 +37,15 @@
 
 #define ESTALE_TIMEOUT_SECS 300
 
-enum {
-	ESTALE_RETRY_FAIL,
-	ESTALE_RETRY_PASS,
-	ESTALE_FAILOVER_FAIL,
-	ESTALE_FAILOVER_PASS,
-	ESTALE_NUM_STATS
-};
+enum { ESTALE_RETRY_FAIL,
+       ESTALE_RETRY_PASS,
+       ESTALE_FAILOVER_FAIL,
+       ESTALE_FAILOVER_PASS,
+       ESTALE_NUM_STATS };
 
 struct estale_stats {
-	unsigned long	jiffies;
-	atomic64_t	stats[ESTALE_NUM_STATS];
+	unsigned long jiffies;
+	atomic64_t stats[ESTALE_NUM_STATS];
 };
 
 extern struct estale_stats global_estale_stats;

@@ -36,110 +36,107 @@
 #include "common/ssi_sysctl.h"
 #include "common/kernel/usiipc.h"
 
-int
-ssiproc_get_max_nodes(void)
+int dvs_procfs_get_max_nodes(void)
 {
 	return (ssiproc_max_nodes);
-} /* ssiproc_get_max_nodes */
+} /* dvs_procfs_get_max_nodes */
 
-
-int
-ssiproc_get_my_nodeid(void)
+int dvs_procfs_get_my_nodeid(void)
 {
 	return (ssi_nodeid);
-} /* ssiproc_get_my_nodeid */
-
+} /* dvs_procfs_get_my_nodeid */
 
 /* REFERENCED */
 
 /* Note: The structure of the node-map file is a plain text file with two items
-         on each line. For the portals interconnect the first item is a
-         hostname and the second a nid.
+	 on each line. For the portals interconnect the first item is a
+	 hostname and the second a nid.
 
-         For the sockets interconnect the first item is a hostname and the
-         second is an IP address.
+	 For the sockets interconnect the first item is a hostname and the
+	 second is an IP address.
 
-         In both cases the node listed first is taken to be the resource
-         manager.
+	 In both cases the node listed first is taken to be the resource
+	 manager.
 */
-struct ssi_node_map *ssiproc_parse_mapfile( char *mapbuf,unsigned long count,
-                                            int *ret )
+struct ssi_node_map *dvs_procfs_parse_mapfile(char *mapbuf, unsigned long count,
+					      int *ret)
 {
-    struct ssi_node_map *nodemap,*nm1;
-    char *p,*p1;
-    int line_count = 0;
-    int err = 0;
-    int i;
+	struct ssi_node_map *nodemap, *nm1;
+	char *p, *p1;
+	int line_count = 0;
+	int err = 0;
+	int i;
 
-    nodemap = (struct ssi_node_map *)vmalloc_ssi(ssiproc_max_nodes *
-	      sizeof(struct ssi_node_map));
-    if( !nodemap ) {
-        err = -ENOMEM;
-        goto out;
-    }
-    nm1 = nodemap;
+	nodemap = (struct ssi_node_map *)vmalloc_ssi(
+		ssiproc_max_nodes * sizeof(struct ssi_node_map));
+	if (!nodemap) {
+		err = -ENOMEM;
+		goto out;
+	}
+	nm1 = nodemap;
 
-    p1 = mapbuf;
-    while( (p = strsep( &p1,"\t:, \n" )) != NULL ) {
+	p1 = mapbuf;
+	while ((p = strsep(&p1, "\t:, \n")) != NULL) {
+		/* ignore empty lines */
+		if (!strlen(p))
+			continue;
 
-        /* ignore empty lines */
-        if (!strlen(p))
-            continue;
+		if (line_count == ssiproc_max_nodes) {
+			printk(KERN_ERR
+			       "DVS: dvs_procfs_parse_mapfile: node map exceeds "
+			       "ssiproc_max_nodes (%d)",
+			       ssiproc_max_nodes);
+			err = -EINVAL;
+			break;
+		}
+		nm1->name = kmalloc_ssi(strlen(p) + 1, GFP_KERNEL);
+		if (!nm1->name) {
+			err = -ENOMEM;
+			break;
+		}
 
-        if (line_count == ssiproc_max_nodes) {
-            printk(KERN_ERR "DVS: ssiproc_parse_mapfile: node map exceeds "
-                   "ssiproc_max_nodes (%d)", ssiproc_max_nodes);
-            err = -EINVAL;
-            break;
-        }
-        nm1->name = kmalloc_ssi(strlen(p) + 1, GFP_KERNEL);
-        if( !nm1->name ) {
-            err = -ENOMEM;
-            break;
-        }
+		line_count++;
 
-        line_count++;
+		strcpy(nm1->name, p);
 
-        strcpy( nm1->name,p );
+		if ((p = strsep(&p1, "\n")) == NULL)
+			break;
+		while (isspace(*p) || ispunct(*p))
+			p++;
 
-        if( (p = strsep( &p1,"\n" )) == NULL )
-            break;
-        while (isspace(*p) || ispunct(*p))
-            p++;
+		if (!strlen(p)) {
+			err = -EINVAL;
+			break;
+		}
 
-        if (!strlen(p)) {
-            err = -EINVAL;
-            break;
-        }
+		nm1->tok = kmalloc_ssi(strlen(p) + 1, GFP_KERNEL);
+		if (!nm1->tok) {
+			err = -ENOMEM;
+			break;
+		}
+		strcpy(nm1->tok, p);
 
-        nm1->tok = kmalloc_ssi(strlen(p) + 1, GFP_KERNEL);
-        if( !nm1->tok ) {
-            err = -ENOMEM;
-            break;
-        }
-        strcpy( nm1->tok,p );
+		spin_lock_init(&nm1->rr_lock);
 
-        spin_lock_init(&nm1->rr_lock);
+		nm1++;
+	}
 
-        nm1++;
-    }
+	if (ssiproc_max_nodes > line_count)
+		ssiproc_max_nodes = line_count;
 
-    if( ssiproc_max_nodes > line_count )
-        ssiproc_max_nodes = line_count;
-
-    if( err ) {
-        nm1 = nodemap;
-        for( i=0; i < line_count; i++,nm1++ ) {
-            if( nm1->name )
-                kfree( nm1->name );
-            if( nm1->tok )
-                kfree( nm1->tok );
-        }
-        vfree(nodemap);
-        nodemap = NULL;
-    }
+	if (err) {
+		nm1 = nodemap;
+		for (i = 0; i < line_count; i++, nm1++) {
+			if (nm1->name)
+				kfree_ssi(nm1->name);
+			if (nm1->tok)
+				kfree_ssi(nm1->tok);
+		}
+		vfree_ssi(nodemap);
+		nodemap = NULL;
+	}
 
 out:
-    *ret = err;
-    return nodemap;
+	*ret = err;
+	return nodemap;
 }

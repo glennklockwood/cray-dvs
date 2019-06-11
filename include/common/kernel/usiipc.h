@@ -34,7 +34,7 @@
 #error "Invalid inclusion of kernel-only header file usiipc.h"
 #endif /* __KERNEL__ */
 
-extern void initialize_syscall_linkage(void);
+extern int initialize_syscall_linkage(void);
 
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
@@ -53,20 +53,26 @@ extern void initialize_syscall_linkage(void);
 
 #include <stdarg.h>
 
+#ifdef CONFIG_KATLAS
+#include "katlas.h"
+#endif
+
+#ifdef CONFIG_KATLAS
+extern struct katlas_instance *dvs_alloc_instance;
+#endif
+
 extern int dvs_trace_idx;
 #ifdef CONFIG_CRAY_TRACE
-#define DVS_TRACE(str, a, b)            CRAYTRACE_BUF(dvs_trace_idx,         \
-                                                CT_MAKENAME(str "      "),   \
-                                                (a),(b))
-#define DVS_TRACEP(str, a, b)           CRAYTRACE_BUF(dvs_trace_idx,         \
-                                                ct_tag_from_string(str),(a), \
-                                                (b))
-#define DVS_TRACEL(str, a, b, c, d, e)  CRAYTRACEL_BUF(dvs_trace_idx,        \
-                                                CT_MAKENAME(str "      "),   \
-                                                (a),(b),(c),(d),(e))
-#define DVS_TRACEPL(str, a, b, c, d, e) CRAYTRACE_BUF(dvs_trace_idx,         \
-                                                ct_tag_from_string(str),(a), \
-                                                (b), (c), (d), (e))
+#define DVS_TRACE(str, a, b)                                                   \
+	CRAYTRACE_BUF(dvs_trace_idx, CT_MAKENAME(str "      "), (a), (b))
+#define DVS_TRACEP(str, a, b)                                                  \
+	CRAYTRACE_BUF(dvs_trace_idx, ct_tag_from_string(str), (a), (b))
+#define DVS_TRACEL(str, a, b, c, d, e)                                         \
+	CRAYTRACEL_BUF(dvs_trace_idx, CT_MAKENAME(str "      "), (a), (b),     \
+		       (c), (d), (e))
+#define DVS_TRACEPL(str, a, b, c, d, e)                                        \
+	CRAYTRACE_BUF(dvs_trace_idx, ct_tag_from_string(str), (a), (b), (c),   \
+		      (d), (e))
 #else
 #define DVS_TRACE(...)
 #define DVS_TRACEP(...)
@@ -76,47 +82,42 @@ extern int dvs_trace_idx;
 
 extern void si_meminfo(struct sysinfo *);
 
-#define USI_DEBUG_MALLOC 0	// Set to 1 to trace {kmalloc,kfree}_ssi calls
+#define USI_DEBUG_MALLOC 0 // Set to 1 to trace {kmalloc,kfree}_ssi calls
 
 extern unsigned long dvs_debug_mask;
 
-#define DVS_DEBUG_OFCLIENT	0x0001
-#define DVS_DEBUG_OFSERVER	0x0002
-#define DVS_DEBUG_PNCLIENT	0x0004
-#define DVS_DEBUG_PNSERVER	0x0008
-#define DVS_DEBUG_PNSUPER	0x0010
-#define DVS_DEBUG_FSERR		0x0020
-#define DVS_DEBUG_QUIESCE       0x0040
-#define DVS_DEBUG_INFRA		0x0080
-#define DVS_DEBUG_IPC		0x0100
-#define DVS_DEBUG_KVMALLOC	0x0200
-#define DVS_DEBUG_RPS		0x0400
+#define DVS_DEBUG_OFCLIENT 0x0001
+#define DVS_DEBUG_OFSERVER 0x0002
+#define DVS_DEBUG_PNCLIENT 0x0004
+#define DVS_DEBUG_PNSERVER 0x0008
+#define DVS_DEBUG_PNSUPER 0x0010
+#define DVS_DEBUG_FSERR 0x0020
+#define DVS_DEBUG_QUIESCE 0x0040
+#define DVS_DEBUG_INFRA 0x0080
+#define DVS_DEBUG_IPC 0x0100
+#define DVS_DEBUG_KVMALLOC 0x0200
+#define DVS_DEBUG_RPS 0x0400
 /*
  * DVS_FOLLOW_MSG is a modifier for the other debug values, indicating
  * that they should be sent to the server for the server to use as well.
  */
-#define DVS_DEBUG_FOLLOW_MSG	0x80000000 /* Bit 31 set */
-#define DVS_DEBUG_MAX		12
+#define DVS_DEBUG_FOLLOW_MSG 0x80000000 /* Bit 31 set */
+#define DVS_DEBUG_MAX 12
 
 struct dvs_debug_name {
 	char *name;
 	unsigned long flag;
 };
 
-static struct dvs_debug_name dvs_debug_names[DVS_DEBUG_MAX] __attribute__ ((unused)) = {
-	{"OFC",	DVS_DEBUG_OFCLIENT},
-	{"OFS",	DVS_DEBUG_OFSERVER},
-	{"PNC",	DVS_DEBUG_PNCLIENT},
-	{"PNS",	DVS_DEBUG_PNSERVER},
-	{"SUP",	DVS_DEBUG_PNSUPER},
-	{"FSE",	DVS_DEBUG_FSERR},
-	{"QSC",	DVS_DEBUG_QUIESCE},
-	{"INF",	DVS_DEBUG_INFRA},
-	{"IPC",	DVS_DEBUG_IPC},
-	{"KVM",	DVS_DEBUG_KVMALLOC},
-	{"RPS",	DVS_DEBUG_RPS},
-	{"FLW",	DVS_DEBUG_FOLLOW_MSG},
-};
+static struct dvs_debug_name dvs_debug_names[DVS_DEBUG_MAX]
+	__attribute__((unused)) = {
+		{ "OFC", DVS_DEBUG_OFCLIENT }, { "OFS", DVS_DEBUG_OFSERVER },
+		{ "PNC", DVS_DEBUG_PNCLIENT }, { "PNS", DVS_DEBUG_PNSERVER },
+		{ "SUP", DVS_DEBUG_PNSUPER },  { "FSE", DVS_DEBUG_FSERR },
+		{ "QSC", DVS_DEBUG_QUIESCE },  { "INF", DVS_DEBUG_INFRA },
+		{ "IPC", DVS_DEBUG_IPC },      { "KVM", DVS_DEBUG_KVMALLOC },
+		{ "RPS", DVS_DEBUG_RPS },      { "FLW", DVS_DEBUG_FOLLOW_MSG },
+	};
 
 #include "common/log.h"
 #include "common/usifunc.h"
@@ -125,47 +126,47 @@ static struct dvs_debug_name dvs_debug_names[DVS_DEBUG_MAX] __attribute__ ((unus
 
 typedef ipc_seqno_t dvs_tx_desc_t;
 
-#define IC_TYPE_ETHERNET	0
-#define IC_TYPE_MYRINET		1
-#define IC_TYPE_QUADRICS	2
-#define IC_TYPE_SEASTAR		3
+#define IC_TYPE_ETHERNET 0
+#define IC_TYPE_MYRINET 1
+#define IC_TYPE_QUADRICS 2
+#define IC_TYPE_SEASTAR 3
 
 #define SOURCE_NODE(msg) (msg)->source_node
 #define REMOTE_IDENTITY(msg) (msg)->sender_identity
-#define NO_IDENTITY	0
-#define BOGUS_IDENTITY	1
+#define NO_IDENTITY 0
+#define BOGUS_IDENTITY 1
 
-#define REPLY_REQUESTED(__ipc) \
+#define REPLY_REQUESTED(__ipc)                                                 \
 	(((__ipc)->reply_address != NULL) && ((__ipc)->reply_length != 0))
 
 struct ipc_rma_get_request {
 	struct usiipc ipcmsg;
-	char	*from;
-	char	*to;
-	u64	rma;
-	ssize_t	length;
-	void	*rma_handle;
+	char *from;
+	char *to;
+	u64 rma;
+	ssize_t length;
+	void *rma_handle;
 };
 
 struct ipc_rma_get_reply {
 	struct usiipc ipcmsg;
-	int	rval;
-	char	data[0]; /* must be [0] */
+	int rval;
+	char data[0]; /* must be [0] */
 };
 
 struct ipc_rma_put_request {
 	struct usiipc ipcmsg;
-	char	*from;
-	char	*to;
-	u64	rma;
-	ssize_t	length;
-	void	*rma_handle;
-	char	data[0]; /* must be [0] */
+	char *from;
+	char *to;
+	u64 rma;
+	ssize_t length;
+	void *rma_handle;
+	char data[0]; /* must be [0] */
 };
 
 struct ipc_rma_put_reply {
 	struct usiipc ipcmsg;
-	int	rval;
+	int rval;
 };
 
 struct ipc_node_down {
@@ -178,36 +179,34 @@ struct ipc_node_down {
 
 /* RMA definitions */
 struct ipc_mapping {
-	char    *addr;
+	char *addr;
 	ssize_t length;
-	int	rw;
-	int	page_count;
-	struct	page **pages;
-	void	*prq;
-	void	(*read_handler)(void *rq, int status,
-				void *addr, size_t length);
+	int rw;
+	int page_count;
+	struct page **pages;
+	void *prq;
+	void (*read_handler)(void *rq, int status, void *addr, size_t length);
 	/* array of dma addresses */
-	int     dma_length;  /* old sockipc stuff - 0 for LNet */
-	u64     dma[1];
+	int dma_length; /* old sockipc stuff - 0 for LNet */
+	u64 dma[1];
 };
 
-/* 
+/*
  * Structures to map RMA completion events to their
  * initiator.
  */
-typedef enum {RMA_GET, RMA_PUT} rma_type_t;
+typedef enum { RMA_GET, RMA_PUT } rma_type_t;
 typedef struct rma_info {
-    struct list_head        list;
-    struct semaphore        sema;
-    int                     lnid;
-    u64                     nid; 
-    u64                     handle;
-    u64                     length;
-    rma_type_t              rma_type;
-    int                     retval;
-    void                    *transport_handle;
+	struct list_head list;
+	struct semaphore sema;
+	int lnid;
+	u64 nid;
+	u64 handle;
+	u64 length;
+	rma_type_t rma_type;
+	int retval;
+	void *transport_handle;
 } rma_info_t;
-
 
 int inode_data_server(struct inode *, int);
 int inode_meta_server(struct inode *, int);
@@ -228,29 +227,29 @@ extern void ipc_term(void);
 
 /* virtual ipc ops definition */
 struct ipc_operations {
-	dvs_tx_desc_t (*regisrq) (struct usiipc *request);
-	int (*sendrq) (struct usiipc *request);
-	int (*sendrqa) (struct usiipc *request);
-	int (*waitrqa) (struct usiipc *request);
-	int (*sendrp) (struct usiipc *request,
-		       struct usiipc *reply, int reply_size);
-	void *(*mapkvm) (char *kvm, ssize_t length, int rw);
-	int (*unmapkvm) (void *rma_handle);
-	void *(*mapuvm) (char *uvm, ssize_t length, int rw);
-	int (*unmapuvm) (void *rma_handle);
-	void *(*rmaget) (int node, char *to, char *from, ssize_t length, 
-                       void *rma_handle, int async);
-	void *(*rmaput) (int node, char *to, char *from, ssize_t length, 
-                       void *rma_handle, int async);
-	void (*rmawait) (rma_info_t *rip);
+	dvs_tx_desc_t (*regisrq)(struct usiipc *request);
+	int (*sendrq)(struct usiipc *request);
+	int (*sendrqa)(struct usiipc *request);
+	int (*waitrqa)(struct usiipc *request);
+	int (*sendrp)(struct usiipc *request, struct usiipc *reply,
+		      int reply_size);
+	void *(*mapkvm)(char *kvm, ssize_t length, int rw);
+	int (*unmapkvm)(void *rma_handle);
+	void *(*mapuvm)(char *uvm, ssize_t length, int rw);
+	int (*unmapuvm)(void *rma_handle);
+	void *(*rmaget)(int node, char *to, char *from, ssize_t length,
+			void *rma_handle, int async);
+	void *(*rmaput)(int node, char *to, char *from, ssize_t length,
+			void *rma_handle, int async);
+	void (*rmawait)(rma_info_t *rip);
 	int (*get_params)(int *ic_type, int *ic_limit);
-	void (*setup_rma) (struct rma_state *rmasp);
-	int (*end_rma) (struct rma_state *rmasp);
-	int (*init) (ssize_t *max_transport_msg_size);
-	void (*term) (void);
-	int (*identity_valid) (int, time_t);
-	void (*block_thread) (void);
-	void (*release_thread) (void);
+	void (*setup_rma)(struct rma_state *rmasp);
+	int (*end_rma)(struct rma_state *rmasp);
+	int (*init)(ssize_t *max_transport_msg_size);
+	void (*term)(void);
+	int (*identity_valid)(int, time_t);
+	void (*block_thread)(void);
+	void (*release_thread)(void);
 };
 
 void dump_request(struct usiipc *request);
@@ -274,93 +273,121 @@ extern int max_nodes;
 #define DVS_LOG_APID 0ULL
 #endif
 
-#define KDEBUG(flag, local_debug, fmt, args...) { if (dvs_debug_mask & flag || local_debug & flag) printk(KERN_INFO fmt, ## args); }
+#define KDEBUG(flag, local_debug, fmt, args...)                                \
+	{                                                                      \
+		if (dvs_debug_mask & flag || local_debug & flag)               \
+			printk(KERN_INFO fmt, ##args);                         \
+	}
 
-#define KDEBUG_OFC(local_debug, fmt, args...) KDEBUG(DVS_DEBUG_OFCLIENT, local_debug, fmt, ## args)
-#define KDEBUG_OFS(local_debug, fmt, args...) KDEBUG(DVS_DEBUG_OFSERVER, local_debug, fmt, ## args)
-#define KDEBUG_PNC(local_debug, fmt, args...) KDEBUG(DVS_DEBUG_PNCLIENT, local_debug, fmt, ## args)
-#define KDEBUG_PNS(local_debug, fmt, args...) KDEBUG(DVS_DEBUG_PNSERVER, local_debug, fmt, ## args)
-#define KDEBUG_SUP(local_debug, fmt, args...) KDEBUG(DVS_DEBUG_PNSUPER,  local_debug, fmt, ## args)
-#define KDEBUG_INF(local_debug, fmt, args...) KDEBUG(DVS_DEBUG_INFRA,    local_debug, fmt, ## args)
-#define KDEBUG_IPC(local_debug, fmt, args...) KDEBUG(DVS_DEBUG_IPC,      local_debug, fmt, ## args)
-#define KDEBUG_KVM(local_debug, fmt, args...) KDEBUG(DVS_DEBUG_KVMALLOC, local_debug, fmt, ## args)
-#define KDEBUG_RPS(local_debug, fmt, args...) KDEBUG(DVS_DEBUG_RPS,      local_debug, fmt, ## args)
-#define KDEBUG_QSC(local_debug, fmt, args...) KDEBUG(DVS_DEBUG_QUIESCE,  local_debug, fmt, ## args)
+#define KDEBUG_OFC(local_debug, fmt, args...)                                  \
+	KDEBUG(DVS_DEBUG_OFCLIENT, local_debug, fmt, ##args)
+#define KDEBUG_OFS(local_debug, fmt, args...)                                  \
+	KDEBUG(DVS_DEBUG_OFSERVER, local_debug, fmt, ##args)
+#define KDEBUG_PNC(local_debug, fmt, args...)                                  \
+	KDEBUG(DVS_DEBUG_PNCLIENT, local_debug, fmt, ##args)
+#define KDEBUG_PNS(local_debug, fmt, args...)                                  \
+	KDEBUG(DVS_DEBUG_PNSERVER, local_debug, fmt, ##args)
+#define KDEBUG_SUP(local_debug, fmt, args...)                                  \
+	KDEBUG(DVS_DEBUG_PNSUPER, local_debug, fmt, ##args)
+#define KDEBUG_INF(local_debug, fmt, args...)                                  \
+	KDEBUG(DVS_DEBUG_INFRA, local_debug, fmt, ##args)
+#define KDEBUG_IPC(local_debug, fmt, args...)                                  \
+	KDEBUG(DVS_DEBUG_IPC, local_debug, fmt, ##args)
+#define KDEBUG_KVM(local_debug, fmt, args...)                                  \
+	KDEBUG(DVS_DEBUG_KVMALLOC, local_debug, fmt, ##args)
+#define KDEBUG_RPS(local_debug, fmt, args...)                                  \
+	KDEBUG(DVS_DEBUG_RPS, local_debug, fmt, ##args)
+#define KDEBUG_QSC(local_debug, fmt, args...)                                  \
+	KDEBUG(DVS_DEBUG_QUIESCE, local_debug, fmt, ##args)
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
-#define KDEBUG_FSE(local_debug, fmt, args...) \
-	do {				\
-		KDEBUG(DVS_DEBUG_FSERR, local_debug, "DVS: APID: %llu UID: %u " fmt, DVS_LOG_APID, CRED->uid, ## args); \
-		DVS_LOG("APID: %llu UID: %u " fmt, DVS_LOG_APID, CRED->uid, ## args);	\
-	} while(0)
-#else
-#define KDEBUG_FSE(local_debug, fmt, args...) \
-	do {				\
-		KDEBUG(DVS_DEBUG_FSERR, local_debug, "DVS: APID: %llu UID: %u " fmt, DVS_LOG_APID, __kuid_val(CRED->uid), ## args);	\
-		DVS_LOG("APID: %llu UID: %u " fmt, DVS_LOG_APID, __kuid_val(CRED->uid), ## args);	\
-	} while(0)
-#endif
+#define KDEBUG_FSE(local_debug, fmt, args...)                                  \
+	do {                                                                   \
+		KDEBUG(DVS_DEBUG_FSERR, local_debug,                           \
+		       "DVS: APID: %llu UID: %u " fmt, DVS_LOG_APID,           \
+		       __kuid_val(CRED->uid), ##args);                         \
+		DVS_LOG("APID: %llu UID: %u " fmt, DVS_LOG_APID,               \
+			__kuid_val(CRED->uid), ##args);                        \
+	} while (0)
+
+#define DVS_BUG()                                                              \
+	{                                                                      \
+		printk(KERN_EMERG                                              \
+		       "!!! DVS BUG version %s in %s line %d !!!\n",           \
+		       SVNREV, __func__, __LINE__);                            \
+		BUG();                                                         \
+	}
+
+#define DVS_BUG_ON(condition)                                                  \
+	if (unlikely(condition)) {                                             \
+		printk(KERN_EMERG                                              \
+		       "!!! DVS BUG version %s in %s line %d: " #condition     \
+		       " !!!\n",                                               \
+		       SVNREV, __func__, __LINE__);                            \
+		BUG();                                                         \
+	}
 
 static char *rq_cmd_names[] = {
-    "RQ_FILE",
-    "RQ_REPLY",
-    "RQ_RMA_GET",
-    "RQ_RMA_PUT",
-    "RQ_CALLBACK",
-    "RQ_IPC_FAILURE",
-    "RQ_RESOURCE",
-    "RQ_IPC_NODE_UP",
-    "RQ_REPLY_ERROR",
-    "RQ_IPC_NODE_DOWN",
-    "RQ_IPC_HEARTBEAT",
-    "RQ_WAITING_REPLY",
-    "RQ_RESOURCE_CLIENT",
-    "RQ_IPC_DISPOSE",
-    "RQ_SUSPECT",
-    "RQ_DSD",
-    "RQ_DSDB",
-    "RQ_DSDC",
+	"RQ_FILE",
+	"RQ_REPLY",
+	"RQ_RMA_GET",
+	"RQ_RMA_PUT",
+	"RQ_CALLBACK",
+	"RQ_IPC_FAILURE",
+	"RQ_RESOURCE",
+	"RQ_IPC_NODE_UP",
+	"RQ_REPLY_ERROR",
+	"RQ_IPC_NODE_DOWN",
+	"RQ_IPC_HEARTBEAT",
+	"RQ_WAITING_REPLY",
+	"RQ_RESOURCE_CLIENT",
+	"RQ_IPC_DISPOSE",
+	"RQ_SUSPECT",
+	"RQ_DSD",
+	"RQ_DSDB",
+	"RQ_DSDC",
 };
 
-static inline char * 
-rq_cmd_name(struct usiipc *rq)
+static inline char *rq_cmd_name(struct usiipc *rq)
 {
-    int cmd = rq->command;
+	int cmd = rq->command;
 
-    if (cmd >= RQ_FILE && cmd < RQ_LAST_IN_LIST) {
-        return rq_cmd_names[cmd-RQ_FILE];
-    } else {
-        return "BOGUS";
-    }
+	if (cmd >= RQ_FILE && cmd < RQ_LAST_IN_LIST) {
+		return rq_cmd_names[cmd - RQ_FILE];
+	} else {
+		return "BOGUS";
+	}
 }
 
-static inline void
-dvs_update_timespec(struct timespec *old, struct timespec *new)
+static inline void dvs_update_timespec(struct timespec *old,
+				       struct timespec *new)
 {
 	if (timespec_compare(old, new) < 0)
 		*old = *new;
 }
 
-static inline void sleep(int seconds)
+static inline void do_sleep(int seconds, int task_flag)
 {
 	wait_queue_head_t wqh;
 	DEFINE_WAIT(wait);
 
 	init_waitqueue_head(&wqh);
-        prepare_to_wait(&wqh, &wait, TASK_INTERRUPTIBLE);
-        schedule_timeout(seconds*HZ);
-        finish_wait(&wqh, &wait);
+	prepare_to_wait(&wqh, &wait, task_flag);
+	schedule_timeout(seconds * HZ);
+	finish_wait(&wqh, &wait);
 }
 
-static inline void interruptible_sleep(int seconds)
+static inline void sleep(int seconds)
 {
-	wait_queue_head_t wqh;
-	DEFINE_WAIT(wait);
+	do_sleep(seconds, TASK_INTERRUPTIBLE);
+}
 
-	init_waitqueue_head(&wqh);
-        prepare_to_wait(&wqh, &wait, TASK_INTERRUPTIBLE);
-        schedule_timeout(seconds*HZ);
-        finish_wait(&wqh, &wait);
+/*
+ * sleep_full() - like sleep, except that we don't want to be woken up
+ * early (or not sleep at all) if there's a signal pending.
+ */
+static inline void sleep_full(int seconds)
+{
+	do_sleep(seconds, TASK_UNINTERRUPTIBLE);
 }
 
 /* nap -- sleep .1
@@ -373,13 +400,12 @@ static inline void nap(void)
 	DEFINE_WAIT(wait);
 
 	init_waitqueue_head(&wqh);
-        prepare_to_wait(&wqh, &wait, TASK_INTERRUPTIBLE);
-        schedule_timeout(HZ/10);
-        finish_wait(&wqh, &wait);
+	prepare_to_wait(&wqh, &wait, TASK_INTERRUPTIBLE);
+	schedule_timeout(HZ / 10);
+	finish_wait(&wqh, &wait);
 }
 
-static inline void
-dump_rma_state(struct rma_state *rmasp)
+static inline void dump_rma_state(struct rma_state *rmasp)
 {
 	sleep(1);
 	KDEBUG_IPC(0, "dump_rma_state: dumping state struct at 0x%p\n", rmasp);
@@ -390,65 +416,65 @@ dump_rma_state(struct rma_state *rmasp)
 	KDEBUG_IPC(0, "    flush = %d\n", rmasp->flush);
 	KDEBUG_IPC(0, "    node = %d\n", rmasp->node);
 	KDEBUG_IPC(0, "    bsz = %d\n", rmasp->bsz);
-	KDEBUG_IPC(0, "    buffer_remote_start = 0x%p\n", rmasp->buffer_remote_start);
+	KDEBUG_IPC(0, "    buffer_remote_start = 0x%p\n",
+		   rmasp->buffer_remote_start);
 	sleep(1);
 }
 
-static inline void
-_vfree_ssi(void *buf, const char *function, int line)
+static inline void _vfree_ssi(void *buf, const char *function, int line)
 {
 	KDEBUG_KVM(0, "_vfree_ssi:     0x%p %s\n", buf, function);
 
 	vfree(buf);
 }
 
-static inline void 
-_kfree_ssi(void *buf, const char *function, int line)
+static inline void _kfree_ssi(void *buf, const char *function, int line)
 {
 	KDEBUG_KVM(0, "_kfree_ssi:     0x%p %s\n", buf, function);
 
 	if (unlikely(is_vmalloc_addr(buf))) {
 		_vfree_ssi(buf, function, line);
-	}
-	else {
+	} else {
 		kfree(buf);
 	}
 }
 
-#define kfree_ssi(buf)		_kfree_ssi(buf, __FUNCTION__, __LINE__)
-#define vfree_ssi(buf)		_vfree_ssi(buf, __FUNCTION__, __LINE__)
+#ifdef CONFIG_KATLAS
+#define kfree_ssi(buf) katlas_phys_free(dvs_alloc_instance, buf)
+#define vfree_ssi(buf) katlas_virt_free(dvs_alloc_instance, buf)
+#else
+#define kfree_ssi(buf) _kfree_ssi(buf, __FUNCTION__, __LINE__)
+#define vfree_ssi(buf) _vfree_ssi(buf, __FUNCTION__, __LINE__)
+#endif
 
-#undef kfree
-#undef vfree
-#define kfree(buf)		_kfree_ssi(buf, __FUNCTION__, __LINE__)
-#define vfree(buf)		_vfree_ssi(buf, __FUNCTION__, __LINE__)
-
-static inline void *
-_vmalloc_ssi(unsigned long size, const char *function, const char *file, int line)
+static inline void *_vmalloc_ssi(unsigned long size, const char *function,
+				 const char *file, int line)
 {
 	void *v = NULL;
-	
+
 	v = vmalloc(size);
 	if (v) {
 		memset(v, 0, size);
 	}
 
-	KDEBUG_KVM(0, "_vmalloc_ssi: 0x%p func: %s file: %s line: %d size: %ld\n",
-	           v, function, file, line, size);
+	KDEBUG_KVM(0,
+		   "_vmalloc_ssi: 0x%p func: %s file: %s line: %d size: %ld\n",
+		   v, function, file, line, size);
 
 	return v;
 }
 
-static inline void *
-_kmalloc_ssi(size_t size, int flags, const char *function, const char *file, int line)
+static inline void *_kmalloc_ssi(size_t size, int flags, const char *function,
+				 const char *file, int line)
 {
 	void *v = NULL;
-	
-	v = kzalloc(size, flags);
-	KDEBUG_KVM(0, "_kmalloc_ssi: 0x%p func: %s file: %s line: %d size: %ld\n",
-	           v, function, file, line, size);
 
-	/* 
+	v = kzalloc(size, flags);
+	KDEBUG_KVM(0,
+		   "_kmalloc_ssi: 0x%p func: %s file: %s line: %d size: %ld\n",
+		   v, function, file, line, size);
+
+	/*
 	 * vmalloc can sleep indefinitely, so don't do a fall back if GFP_ATOMIC
 	 * is specified as a flag. This logic may need to be updated if DVS ends
 	 * up using flags beyond GFP_KERNEL and GFP_ATOMIC.
@@ -460,18 +486,23 @@ _kmalloc_ssi(size_t size, int flags, const char *function, const char *file, int
 	return _vmalloc_ssi(size, function, file, line);
 }
 
-#define kmalloc_ssi(sz, fl)	_kmalloc_ssi  (sz, fl, __FUNCTION__, __FILE__, __LINE__)
-#define vmalloc_ssi(sz)		_vmalloc_ssi  (sz,     __FUNCTION__, __FILE__, __LINE__)
+#ifdef CONFIG_KATLAS
+#define kmalloc_ssi(sz, fl) katlas_phys_zalloc(dvs_alloc_instance, sz, fl)
+#define vmalloc_ssi(sz) katlas_virt_zalloc(dvs_alloc_instance, sz)
+#else
+#define kmalloc_ssi(sz, fl)                                                    \
+	_kmalloc_ssi(sz, fl, __FUNCTION__, __FILE__, __LINE__)
+#define vmalloc_ssi(sz) _vmalloc_ssi(sz, __FUNCTION__, __FILE__, __LINE__)
+#endif
 
 static inline void free_msg(void *msg)
 {
 	if (unlikely(!msg)) {
-		KDEBUG_KVM(0, "tried to free NULL pointer at %s:%d\n",
-			__FILE__, __LINE__);
-	}
-	else {
-		((struct usiipc *) msg)->state = ST_FREE;
-		kfree(msg);
+		KDEBUG_KVM(0, "tried to free NULL pointer at %s:%d\n", __FILE__,
+			   __LINE__);
+	} else {
+		((struct usiipc *)msg)->state = ST_FREE;
+		kfree_ssi(msg);
 	}
 }
 

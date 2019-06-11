@@ -1,0 +1,149 @@
+diff --git a/autoMakefile.am b/autoMakefile.am
+index fb20ce8..aa9d85f 100644
+--- a/autoMakefile.am
++++ b/autoMakefile.am
+@@ -101,7 +101,8 @@ EXTRA_DIST = @PACKAGE_TARNAME@.spec	\
+ 	lustre-dkms_post-build.sh	\
+ 	LUSTRE-VERSION-GEN		\
+ 	LUSTRE-VERSION-FILE		\
+-	undef.h
++	undef.h				\
++	lnet.pc
+ 
+ # contrib is a directory.  Putting a directory in EXTRA_DIST
+ # recursively includes the entire directory contents in the
+diff --git a/lnet.pc b/lnet.pc
+new file mode 100644
+index 0000000..752371a
+--- /dev/null
++++ b/lnet.pc
+@@ -0,0 +1,8 @@
++
++includedir=/usr/include
++symversdir=@symversdir@
++
++Cflags: -include @cfgdir@/config.h -I${includedir}/libcfs/include -I${includedir}/lnet/include
++Description: Lustre Network
++Name: lnet
++Version: @PACKAGE_VERSION@
+diff --git a/lustre.spec.in b/lustre.spec.in
+index 5e3a513..72cda47 100644
+--- a/lustre.spec.in
++++ b/lustre.spec.in
+@@ -31,6 +31,14 @@
+     %undefine with_zfs
+ %endif
+ 
++%if %{undefined _pkgconfigdir}
++    %define _pkgconfigdir %{_libdir}/pkgconfig
++%endif
++
++%if %{undefined _version}
++    %define _version 9001.0.0
++%endif
++
+ %{!?version: %global version @VERSION@}
+ %{!?kver:    %global kver    %(uname -r)}
+ %{!?kdir:    %global kdir    /lib/modules/%{kver}/source}
+@@ -273,6 +281,16 @@ simulate MDT service threads) locally on the MDS node, and does not need Lustre
+ clients in order to run
+ %endif
+ 
++%package devel
++Group: Development/Libraries
++License: GPL
++Summary: Lustre Header files
++
++%description devel
++Development files for building against Lustre library.
++Includes headers, dynamic, and static libraries.
++Compiled for kernel: %{kversion}
++
+ %if 0%{?suse_version}
+ %debug_package
+ %endif
+@@ -436,6 +454,47 @@ echo '%{_sbindir}/wirecheck' >>lustre-tests.files
+ echo '%{_sbindir}/wiretest' >>lustre-tests.files
+ %endif
+ 
++for header in api.h lib-lnet.h lib-types.h
++do
++    install -D -m 0644 lnet/include/lnet/${header} %{buildroot}/%{_includedir}/lnet/${header}
++done
++
++for header in libcfs_debug.h lnetctl.h lnetst.h libcfs_ioctl.h lnet-dlc.h \
++              lnet-types.h nidstr.h
++do
++    install -D -m 0644 lnet/include/uapi/linux/lnet/${header} %{buildroot}/%{_includedir}/uapi/linux/lnet/${header}
++done
++
++for header in libcfs.h util/list.h curproc.h bitmap.h libcfs_private.h libcfs_cpu.h \
++              libcfs_prim.h libcfs_time.h libcfs_string.h libcfs_workitem.h \
++              libcfs_hash.h libcfs_heap.h libcfs_fail.h libcfs_debug.h range_lock.h
++do
++    install -D -m 0644 libcfs/include/libcfs/${header} %{buildroot}/%{_includedir}/libcfs/${header}
++done
++
++for header in linux-fs.h linux-mem.h linux-time.h linux-cpu.h linux-crypto.h \
++              linux-misc.h
++do
++    install -D -m 0644 libcfs/include/libcfs/linux/${header} %{buildroot}/%{_includedir}/libcfs/linux/${header}
++done
++
++install -D -m 0644 lustre/include/interval_tree.h %{buildroot}/%{_includedir}/interval_tree.h
++
++%define cfgdir %{_includedir}/lustre/
++eval "cp lnet.pc lnet.pc.orig"
++eval "sed -i 's,@includedir@,%{_includedir},' lnet.pc"
++eval "sed -i 's,@libdir@,%{_libdir},' lnet.pc"
++eval "sed -i 's,@symversdir@,%{_datadir}/symvers,' lnet.pc"
++eval "sed -i 's,@PACKAGE_VERSION@,%{_version},' lnet.pc"
++eval "sed -i 's,@cfgdir@,%{cfgdir},' lnet.pc"
++eval "echo %{_includedir} %{_version} %{_libdir} %{_datadir} %{cfgdir}"
++eval "diff -u lnet.pc.orig lnet.pc || /bin/true"
++install -D -m 0644 lnet.pc $RPM_BUILD_ROOT%{_pkgconfigdir}/lnet.pc
++
++# Install Module.symvers and config.h for the lnet devel package
++%{__install} -D -m 0644 ${PWD}/Module.symvers %{buildroot}/%{_datadir}/symvers/%{_arch}/Module.symvers
++%{__install} -D -m 0644 config.h %{buildroot}/%{cfgdir}/config.h
++
+ %files -f lustre.files
+ %defattr(-,root,root)
+ %{_sbindir}/*
+@@ -547,6 +606,23 @@ echo '%{_sbindir}/wiretest' >>lustre-tests.files
+ %doc lustre-iokit/stats-collect/README.iokit-lstats
+ %endif
+ 
++%files devel
++%dir %{_datadir}/symvers
++%dir %{_datadir}/symvers/%{_arch}
++%attr (644,root,root) %{_datadir}/symvers/%{_arch}/Module.symvers
++%{_includedir}/lustre
++%{_libdir}/liblustreapi.a
++%{_libdir}/liblustreapi.so*
++%{_libdir}/liblnetconfig.a
++%{_libdir}/liblnetconfig.so
++%exclude %{cfgdir}
++%{_includedir}/lnet
++%{_includedir}/linux
++%{_includedir}/uapi
++%{_includedir}/libcfs
++%{_includedir}/interval_tree.h
++%{_pkgconfigdir}/lnet.pc
++
+ %post
+ %if %{with systemd}
+ %systemd_post lnet.service
+@@ -562,6 +638,12 @@ echo '%{_sbindir}/wiretest' >>lustre-tests.files
+ %systemd_postun_with_restart lnet.service
+ %endif
+ 
++%post devel
++/sbin/ldconfig
++
++%postun devel
++/sbin/ldconfig
++
+ %clean
+ rm -rf $RPM_BUILD_ROOT
+ rm -rf %{_tmppath}/kmp

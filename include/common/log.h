@@ -26,15 +26,16 @@
 #include <linux/slab.h>
 
 #define DVS_MAX_LOGS 4
-#define LOG_DVS_LOG  0
-#define LOG_IPC_LOG  1
-#define LOG_RQ_LOG   2
-#define LOG_FS_LOG   3
+#define LOG_DVS_LOG 0
+#define LOG_IPC_LOG 1
+#define LOG_RQ_LOG 2
+#define LOG_FS_LOG 3
 
 /* maximum message length in bytes. The message size is stored as an unsigned
  * char, so the max size should not exceed 255. */
 #define DVS_LOG_MESSAGE_SIZE 255
-#define DVS_LOG_MESSAGE_META_SIZE (offsetof(struct log_message, text) + sizeof(char))
+#define DVS_LOG_MESSAGE_META_SIZE                                              \
+	(offsetof(struct log_message, text) + sizeof(char))
 #define DVS_LOG_SIZE_KB 256 /* default log buffer length in KB */
 #define DVS_RQ_LOG_SIZE_KB 16384 /* default log buffer length in KB */
 #define DVS_RQ_LOG_MIN_TIME_SECS 15 /* minimum time for requests to be logged */
@@ -49,57 +50,58 @@
  * Define bits for request log 'control', set via writes to
  * /proc/fs/dvs/request_log
  */
-#define DVSPROC_RQ_LOG_CONTROL_ENABLE     0x1
-#define DVSPROC_RQ_LOG_CONTROL_RESET      0x2
-#define DVSPROC_RQ_LOG_CONTROL_VALID_MASK 0x3
+#define DVS_DEBUGFS_RQ_LOG_CONTROL_ENABLE 0x1
+#define DVS_DEBUGFS_RQ_LOG_CONTROL_RESET 0x2
+#define DVS_DEBUGFS_RQ_LOG_CONTROL_VALID_MASK 0x3
 
 /*
  * Define bits for file system log 'control', set via writes to
  * /proc/fs/dvs/fs_log
  */
-#define DVSPROC_FS_LOG_CONTROL_ENABLE     0x1
-#define DVSPROC_FS_LOG_CONTROL_RESET      0x2
-#define DVSPROC_FS_LOG_CONTROL_VALID_MASK 0x3
+#define DVS_DEBUGFS_FS_LOG_CONTROL_ENABLE 0x1
+#define DVS_DEBUGFS_FS_LOG_CONTROL_RESET 0x2
+#define DVS_DEBUGFS_FS_LOG_CONTROL_VALID_MASK 0x3
 
 /*
  * Note, dvs_log_write does not support the specifying of
- * log levels such as KERN_ERR. Doing so will result in a 
+ * log levels such as KERN_ERR. Doing so will result in a
  * string that contains ^A (0x01 "SOH"), which can halt
  * parsing, and the log level digit, such as "3" for KERN_ERR.
  */
-#define DVS_LOG(args...)  dvs_log_write(LOG_DVS_LOG, 0, ## args)
-#define DVS_LOGP(args...) dvs_log_write(LOG_DVS_LOG, 1, ## args)
-#define IPC_LOG(args...)  dvs_log_write(LOG_IPC_LOG, 0, ## args)
-#define IPC_LOGP(args...) dvs_log_write(LOG_IPC_LOG, 1, ## args)
-#define RQ_LOG(args...)	  dvs_log_write(LOG_RQ_LOG,  0, ## args)
-#define RQ_LOGP(args...)  dvs_log_write(LOG_RQ_LOG,  1, ## args)
-#define FS_LOG(args...)	  dvs_log_write(LOG_FS_LOG,  0, ## args)
-#define FS_LOGP(args...)  dvs_log_write(LOG_FS_LOG,  1, ## args)
+#define DVS_LOG(args...) dvs_log_write(LOG_DVS_LOG, 0, ##args)
+#define DVS_LOGP(args...) dvs_log_write(LOG_DVS_LOG, 1, ##args)
+#define IPC_LOG(args...) dvs_log_write(LOG_IPC_LOG, 0, ##args)
+#define IPC_LOGP(args...) dvs_log_write(LOG_IPC_LOG, 1, ##args)
+#define RQ_LOG(args...) dvs_log_write(LOG_RQ_LOG, 0, ##args)
+#define RQ_LOGP(args...) dvs_log_write(LOG_RQ_LOG, 1, ##args)
+#define FS_LOG(args...) dvs_log_write(LOG_FS_LOG, 0, ##args)
+#define FS_LOGP(args...) dvs_log_write(LOG_FS_LOG, 1, ##args)
 
 /*
  * Access the dvs log as a single buffer starting at the head.
  *
  * This returns &head[offset], with wrap-around. Name and syntax is awkward.
  */
-#define DVS_LOG_LINEAR(buf, head, size, offset) ((unsigned char *)((((head - buf) + offset) % size) + buf))
+#define DVS_LOG_LINEAR(buf, head, size, offset)                                \
+	((unsigned char *)((((head - buf) + offset) % size) + buf))
 
-/* 
+/*
  * The jiffies value should go first so we don't get a large amount of padding.
  */
 struct log_message {
-	unsigned long	timestamp;	/* jiffies */
-	unsigned char	text_size;	/* valid bytes in text */
-	unsigned char	flags;		/* message flags */
-	char		text[];		/* text, terminated with message size */
+	unsigned long timestamp; /* jiffies */
+	unsigned char text_size; /* valid bytes in text */
+	unsigned char flags; /* message flags */
+	char text[]; /* text, terminated with message size */
 };
 
 struct log_info {
-	struct log_message *message;	/* packing/unpacking buffer */
-	char *buf;			/* main circular buffer */
-	char *head;			/* pointer to next insertion point */
-	uint size_bytes;		/* size of buf in bytes */
-	uint size_kb;			/* size of buf in kbytes */
-	char name[32];			/* name of log */
+	struct log_message *message; /* packing/unpacking buffer */
+	char *buf; /* main circular buffer */
+	char *head; /* pointer to next insertion point */
+	uint size_bytes; /* size of buf in bytes */
+	uint size_kb; /* size of buf in kbytes */
+	char name[32]; /* name of log */
 };
 
 extern int dvs_log_init(int n, uint size_kb, char *name);
@@ -116,4 +118,3 @@ extern uint dvs_fs_log_enabled;
 extern uint dvs_fs_log_min_time_secs;
 
 #endif /* LOG_H */
-

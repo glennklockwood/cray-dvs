@@ -26,27 +26,27 @@
 #include <linux/time.h>
 
 typedef struct ht_bucket_s {
-	int64_t			htb_key;
-	char			*htb_string;
-	struct timespec		htb_time;
-	void			*htb_data;	/* mem not managed by us */
-	struct ht_bucket_s	*htb_next_bucket;
-	struct ht_bucket_s	*htb_prev_bucket;
+	int64_t htb_key;
+	char *htb_string;
+	struct timespec htb_time;
+	void *htb_data; /* mem not managed by us */
+	struct ht_bucket_s *htb_next_bucket;
+	struct ht_bucket_s *htb_prev_bucket;
 } ht_bucket_t;
 
 typedef struct ht_s {
-	int32_t		ht_nbuckets;
-	rwlock_t	ht_lock;
-	ht_bucket_t	*ht_bucket[0];
+	int32_t ht_nbuckets;
+	rwlock_t ht_lock;
+	ht_bucket_t *ht_bucket[0];
 } ht_t;
 
-#define ht_hash(key, ht)	(((uint64_t)key) % ht->ht_nbuckets)
+#define ht_hash(key, ht) (((uint64_t)key) % ht->ht_nbuckets)
 
-ht_t	*ht_init(int32_t nbuckets);
-void	ht_delete(ht_t *ht, int8_t free_bucket_data_mem);
-int8_t	ht_insert_data(ht_t *ht, int64_t key, char *string, void *data);
-int8_t  ht_update_data(ht_t *ht, int64_t key, char *string);
-void	*ht_delete_data(ht_t *ht, int64_t key);
-void	*ht_find_data(ht_t *ht, int64_t key);
+ht_t *ht_init(int32_t nbuckets);
+void ht_delete(ht_t *ht, int8_t free_bucket_data_mem);
+int8_t ht_insert_data(ht_t *ht, int64_t key, char *string, void *data);
+int8_t ht_update_data(ht_t *ht, int64_t key, char *string);
+void *ht_delete_data(ht_t *ht, int64_t key);
+void *ht_find_data(ht_t *ht, int64_t key);
 
 #endif /* HASH_TABLE_H */

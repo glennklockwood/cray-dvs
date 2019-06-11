@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2017 Cray Inc. All Rights Reserved.
+ * Copyright 2014-2018 Cray Inc. All Rights Reserved.
  *
  * This file is part of Cray Data Virtualization Service (DVS).
  *
@@ -17,12 +17,6 @@
  * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-/*
- *   NOTE: IF you change, add or remove anything from this file make sure that
- *         DVSNET-IF still works.  Modifiy DVSNET-IF as needed.
- *         include/dvsnet-if-ipc-api.h
- */
-
 #ifndef IPC_API_H
 #define IPC_API_H
 
@@ -30,7 +24,7 @@
 #include <linux/list.h>
 
 /* limited by transports */
-#define MAX_MSG_SIZE (34*1024)
+#define MAX_MSG_SIZE (34 * 1024)
 
 /* reply copy options */
 #define REPLY_COPY 0
@@ -54,31 +48,33 @@ extern int max_nodes;
  * We have three versions of states.  Client, server and common.
  */
 enum {
-    /* Common */
-    ST_INITIAL = 0,  /* ensure it's in this state after a malloc */
-    ST_WAIT_QUEUED,
-    ST_WAITING,
-    ST_SEND_COMPL,
-    ST_WAIT_CLEANUP,
-    ST_WAIT_COMPL,
-    ST_FREE,
+	/* Common */
+	ST_INITIAL = 0, /* ensure it's in this state after a malloc */
+	ST_WAIT_QUEUED,
+	ST_WAITING,
+	ST_SEND_COMPL,
+	ST_WAIT_CLEANUP,
+	ST_WAIT_COMPL,
+	ST_FREE,
 
-    /* Client */
+	/* Client */
 
-    /* Server */
-    ST_SV_RECEIVED,
-    ST_SV_MSG_QUEUED,
-    ST_SV_MSG_ACTIVE,
-    ST_SV_MSG_PROCESSED,
+	/* Server */
+	ST_SV_RECEIVED,
+	ST_SV_MSG_QUEUED,
+	ST_SV_MSG_ACTIVE,
+	ST_SV_MSG_PROCESSED,
 
-    ST_END,
+	ST_END,
 };
 
 enum dvsipc_instance_id {
 	DVSIPC_INSTANCE_DVS,
+#ifdef WITH_DATAWARP
 	DVSIPC_INSTANCE_KDWFS,
 	DVSIPC_INSTANCE_KDWFSB,
 	DVSIPC_INSTANCE_KDWCFS,
+#endif
 	DVSIPC_INSTANCE_MAX
 };
 
@@ -90,30 +86,33 @@ struct usiipc {
 	unsigned short retry;
 	unsigned int usiipc_len;
 	unsigned long debug;
-	int	state;
-	int	rval;
-	int	request_length;
-	int	target_node;
-	int	source_node;
+	uint64_t network_time_us;
+	uint64_t queue_time_us;
+	uint64_t process_time_us;
+	int state;
+	int rval;
+	int request_length;
+	int target_node;
+	int source_node;
 	ipc_seqno_t source_seqno;
-	void	*reply_address;
-	int	reply_length;
-	void	*wakeup_word;
-	int	instance_id;
-	int	command;
-	int	callback_command;
-	short	free_required, async, notify_of_abnormal_send;
-	void	(*abnormal_handler)(struct usiipc *freq, int to_node);
-	struct	usiipc *next, *prev;
-	struct	usiipc *callback, *original_request, *source_request;
-	long	priority;
+	void *reply_address;
+	int reply_length;
+	void *wakeup_word;
+	int instance_id;
+	int command;
+	int callback_command;
+	short free_required, async, notify_of_abnormal_send;
+	void (*abnormal_handler)(struct usiipc *freq, int to_node);
+	struct usiipc *next, *prev;
+	struct usiipc *callback, *original_request, *source_request;
+	long priority;
 	union {
 		struct semaphore msgwait;
 		char non_debug_pad[SIZEOF_DEBUG_SEMAPHORE];
 	};
-	time_t	sender_identity, receiver_identity;
-	pid_t	sender_pid;
-	void	*transport_handle;
+	time_t sender_identity, receiver_identity;
+	pid_t sender_pid;
+	void *transport_handle;
 	struct list_head active_rx;
 	/*
 	 * dual purpose field. For file requests, this holds the jiffies value
@@ -121,35 +120,32 @@ struct usiipc {
 	 * timing information.
 	 */
 	unsigned long jiffies_val;
-	char	body[0];
+	char body[0];
 };
 
 struct rma_state {
-	void	*handle;
-	char	*buffer;
-	int	valid_size;
-	char	*remote_addr;
-	int	flush;
-	int	node;
-	int	bsz;
-	char	*buffer_remote_start;
+	void *handle;
+	char *buffer;
+	int valid_size;
+	char *remote_addr;
+	int flush;
+	int node;
+	int bsz;
+	char *buffer_remote_start;
 };
 
-extern int send_ipc_request (int node, int command,
-			     struct usiipc *request, int request_size,
-			     struct usiipc *reply, int reply_size,
-			     time_t identity);
-extern int send_ipc_callback(int node, int command,
-			     struct usiipc *request, int request_size,
-			     struct usiipc *reply, int reply_size,
-			     time_t identity);
-extern int send_ipc_request_async (int node, int command,
-				   struct usiipc *request, int request_size,
-				   struct usiipc *reply, int reply_size,
-				   time_t identity);
+extern int send_ipc_request(int node, int command, struct usiipc *request,
+			    int request_size, struct usiipc *reply,
+			    int reply_size, time_t identity);
+extern int send_ipc_callback(int node, int command, struct usiipc *request,
+			     int request_size, struct usiipc *reply,
+			     int reply_size, time_t identity);
+extern int send_ipc_request_async(int node, int command, struct usiipc *request,
+				  int request_size, struct usiipc *reply,
+				  int reply_size, time_t identity);
 extern int wait_for_async_request(struct usiipc *request);
-extern int send_ipc_reply (struct usiipc *request,
-			   struct usiipc *reply, int reply_size, int nocopy);
+extern int send_ipc_reply(struct usiipc *request, struct usiipc *reply,
+			  int reply_size, int nocopy);
 extern void *map_ipc_user_memory(char *uvm, ssize_t length, int rw);
 extern int unmap_ipc_user_memory(void *rma_handle);
 extern void *map_ipc_kernel_memory(char *kvm, ssize_t length, int rw);
@@ -162,20 +158,20 @@ extern int ipc_rma_get(int node, char *to, char *from, ssize_t length,
 		       void *rma_handle);
 extern int ipc_rma_put(int node, char *to, char *from, ssize_t length,
 		       void *rma_handle);
-extern void *ipc_rma_get_async(int node, char *to, char *from, ssize_t length, 
-                               void *rma_handle);
-extern void *ipc_rma_put_async(int node, char *to, char *from, ssize_t length, 
-                               void *rma_handle);
-extern void register_ipc_read_complete(void *rma_handle,
-		void (*read_handler)(void *rq, int status,
-					void *addr, size_t length),
-		void *rq);
+extern void *ipc_rma_get_async(int node, char *to, char *from, ssize_t length,
+			       void *rma_handle);
+extern void *ipc_rma_put_async(int node, char *to, char *from, ssize_t length,
+			       void *rma_handle);
+extern void register_ipc_read_complete(
+	void *rma_handle,
+	void (*read_handler)(void *rq, int status, void *addr, size_t length),
+	void *rq);
 
 extern void setup_rma(struct rma_state *, int, void *, char *, int);
 extern int end_rma(struct rma_state *, void *);
 
-void *dvs_alloc_buf(int size);
-void dvs_free_buf(void *buf);
+void *dvs_alloc_data_buf(int size);
+void dvs_free_data_buf(void *buf);
 void *dvs_direct_buf_alloc(int count, struct page ***pglist, void **mmva);
 void dvs_direct_buf_free(int count, struct page **pages, void *mmva, void *kva);
 

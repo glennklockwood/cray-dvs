@@ -17,7 +17,7 @@
  * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#define	_GNU_SOURCE
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -32,77 +32,81 @@
 #include <regex.h>
 #include "common.h"
 
-#define	RED	"\033[31m"
-#define	GRN	"\033[32m"
-#define	BLK	"\033[39m"
+#define RED "\033[31m"
+#define GRN "\033[32m"
+#define BLK "\033[39m"
 
-static int  _verbose = 1;
-static int  _color = 1;
+static int _verbose = 1;
+static int _color = 1;
 static FILE *_logfd = NULL;
 static char *_suite = NULL;
 static char **_names = NULL;
-static int  *_errors = NULL;
+static int *_errors = NULL;
 static struct timeval *_times = NULL;
-static int  _depth = 0;
-static int  _maxdepth = 0;
+static int _depth = 0;
+static int _maxdepth = 0;
 static char *_prefix = NULL;
-static int  _prelen = 0;
-static int  _maxprelen = 0;
-static int  _failcnt = 0;
-static struct timeval _starttime = {0,0};
+static int _prelen = 0;
+static int _maxprelen = 0;
+static int _failcnt = 0;
+static struct timeval _starttime = { 0, 0 };
 
-static int  *errp = NULL;
+static int *errp = NULL;
 
 typedef struct {
-	int	index;		// preserves order as presented from file
-	char	key[48];	// flat format key
-	char	val[16];	// flat format value
+	int index; // preserves order as presented from file
+	char key[48]; // flat format key
+	char val[16]; // flat format value
 } keyval_t;
 
-static keyval_t *_kvp = NULL;	// cache of values, refresh with read_stats()
-static int _kvlen = 0;		// number of keys seen
-static int _kvsiz = 0;		// space allocated for keys
+static keyval_t *_kvp = NULL; // cache of values, refresh with read_stats()
+static int _kvlen = 0; // number of keys seen
+static int _kvsiz = 0; // space allocated for keys
 
 /*
  * Sort routine to implement bsearch().
  */
-static int
-_sort_key(const void *v1, const void *v2)
+static int _sort_key(const void *v1, const void *v2)
 {
 	keyval_t *k1 = (keyval_t *)v1;
 	keyval_t *k2 = (keyval_t *)v2;
 	return strcmp(k1->key, k2->key);
 }
 
-static int
-_parse_mount(char *buffer, char **rem, char **loc, char **typ, char **stats)
+static int _parse_mount(char *buffer, char **rem, char **loc, char **typ,
+			char **stats)
 {
-static  char *regpat = "^([^ ]+) on ([^ ]+) type ([^ ]+).*,statsfile=([^,]+),";
-static  regex_t regex;
-static  int init = 0;
-        regmatch_t regmatch[5];
-        char *sub[5];
-        int ii;
+	static char *regpat =
+		"^([^ ]+) on ([^ ]+) type ([^ ]+).*,statsfile=([^,]+),";
+	static regex_t regex;
+	static int init = 0;
+	regmatch_t regmatch[5];
+	char *sub[5];
+	int ii;
 
-        if (! init) {
-                init = 1;
-                if (regcomp(&regex, regpat, REG_EXTENDED) < 0) {
-                        perror("regcomp");
-                        return -1;
-                }
-        }
+	if (!init) {
+		init = 1;
+		if (regcomp(&regex, regpat, REG_EXTENDED) < 0) {
+			perror("regcomp");
+			return -1;
+		}
+	}
 
-        if (regexec(&regex, buffer, 5, regmatch, 0) < 0)
-                return -1;
-        for (ii = 1; ii < 5; ii++) {
-                sub[ii] = &buffer[regmatch[ii].rm_so];
-                buffer[regmatch[ii].rm_eo] = 0;
-        }
-        if (rem) *rem = sub[1];
-        if (loc) *loc = sub[2];
-        if (typ) *typ = sub[3];
-        if (stats) *stats = sub[4];
-        return 0;
+	if (regexec(&regex, buffer, 5, regmatch, 0) < 0)
+		return -1;
+	for (ii = 1; ii < 5; ii++) {
+		sub[ii] = &buffer[regmatch[ii].rm_so];
+		buffer[regmatch[ii].rm_eo] = 0;
+	}
+	if (rem)
+		*rem = sub[1];
+	if (loc)
+		*loc = sub[2];
+	if (typ)
+		*typ = sub[3];
+	if (stats)
+		*stats = sub[4];
+	return 0;
 }
 
 /*
@@ -110,11 +114,10 @@ static  int init = 0;
  * the mnt_path. Returns the path pointer (filled in with the path) if
  * found, otherwise NULL.
  */
-char *
-stats_file_path(char *path, int siz, const char *mnt_path)
+char *stats_file_path(char *path, int siz, const char *mnt_path)
 {
 	memset(path, 0, siz);
-	if (! mnt_path) {
+	if (!mnt_path) {
 		snprintf(path, siz, "/proc/fs/dvs/stats");
 	} else {
 		char buffer[1024];
@@ -124,19 +127,19 @@ stats_file_path(char *path, int siz, const char *mnt_path)
 			return NULL;
 		}
 		while (fgets(buffer, sizeof(buffer), fd)) {
-                        char *rem, *loc, *typ, *stats;
-                        if (_parse_mount(buffer, &rem, &loc, &typ, &stats) < 0)
-                                continue;
-                        if (strcmp(typ, "dvs"))
+			char *rem, *loc, *typ, *stats;
+			if (_parse_mount(buffer, &rem, &loc, &typ, &stats) < 0)
 				continue;
-                        if (strcmp(loc, mnt_path))
+			if (strcmp(typ, "dvs"))
 				continue;
-                        snprintf(path, siz, "%s", stats);
+			if (strcmp(loc, mnt_path))
+				continue;
+			snprintf(path, siz, "%s", stats);
 			break;
 		}
 		pclose(fd);
 	}
-	if (! *path) {
+	if (!*path) {
 		errno = ENOENT;
 		perror(mnt_path);
 		return NULL;
@@ -149,8 +152,7 @@ stats_file_path(char *path, int siz, const char *mnt_path)
  * be provided, NOT the mount path. This is static, and is used only in
  * this code module.
  */
-int
-stats_write(const char *path, const char *options)
+int stats_write(const char *path, const char *options)
 {
 	FILE *fd;
 	/* Force the format */
@@ -163,15 +165,14 @@ stats_write(const char *path, const char *options)
 	return 0;
 }
 
-/* 
+/*
  * Populate the kvp array with data from the appropriate stats file, and
  * sort the results for quick retrieval by key.
  *
  * This finds the appropriate stats file based on mount_path of the DVS
  * file system.
  */
-int
-stats_read(const char *path)
+int stats_read(const char *path)
 {
 	char buffer[1024];
 	FILE *fd;
@@ -210,7 +211,8 @@ stats_read(const char *path)
 		*dst = 0;
 
 		/* Skip the whitespace */
-		while (isspace(*src)) src++;
+		while (isspace(*src))
+			src++;
 
 		/* Copy the value into the memory structure */
 		dst = _kvp[_kvlen].val;
@@ -239,32 +241,30 @@ stats_read(const char *path)
  * This returns NULL if the stats have never been loaded, or if the specified
  * key is not found.
  */
-const char *
-stats_getval(const char *key)
+const char *stats_getval(const char *key)
 {
 	keyval_t kkey, *pkey;
-	if (! _kvp) {
+	if (!_kvp) {
 		errno = ENOENT;
 		return NULL;
 	}
 	snprintf(kkey.key, sizeof(kkey.key), "%s", key);
 	pkey = bsearch(&kkey, _kvp, _kvlen, sizeof(keyval_t), _sort_key);
-	if (! pkey) {
+	if (!pkey) {
 		errno = ENOENT;
 		return NULL;
 	}
 	return pkey->val;
 }
 
-int
-dvs_mkdir_p(const char *dirpath)
+int dvs_mkdir_p(const char *dirpath)
 {
 	FILE *fd;
 	char cmd[256];
 	char buf[256];
 
 	snprintf(cmd, sizeof(cmd), "mkdir -p %s", dirpath);
-	if (! (fd = popen(cmd, "r")))
+	if (!(fd = popen(cmd, "r")))
 		return -1;
 	while (fgets(buf, sizeof(buf), fd))
 		;
@@ -272,48 +272,46 @@ dvs_mkdir_p(const char *dirpath)
 	return 0;
 }
 
-int
-dvs_umount_all(void)
+int dvs_umount_all(void)
 {
-        FILE *fd;
-        char buffer[1024];
-        int err = 0;
-        test_debug("Unmount all\n");
-        if (!(fd = popen("mount -t dvs", "r"))) {
-                perror("popen mount");
-                return -1;
-        }
-        while (fgets(buffer, sizeof(buffer), fd)) {
-                char *rem, *loc, *typ, *stats;
-                int retry = 10;
-                if (_parse_mount(buffer, &rem, &loc, &typ, &stats) < 0)
-                        continue;
-                if (strcmp(typ, "dvs"))
-                        continue;
-                while (retry-- > 0) {
-                        test_debug("Unmount %s\n", loc);
-                        if (! umount2(loc, 0))
-                                break;
-                        if (errno != EBUSY) {
-                                perror("unmount");
-                                fprintf(stderr, "Could not unmount %s\n", loc);
-                                err++;
-                                break;
-                        }
-                        sleep(1);
-                }
-                if (retry < 0 && umount2(loc, MNT_FORCE) < 0) {
-                        perror("unmount force");
-                        fprintf(stderr, "Could not unmount force %s\n", loc);
-                        err++;
-                }
-        }
-        pclose(fd);
-        return (!err) ? 0 : -1;
+	FILE *fd;
+	char buffer[1024];
+	int err = 0;
+	test_debug("Unmount all\n");
+	if (!(fd = popen("mount -t dvs", "r"))) {
+		perror("popen mount");
+		return -1;
+	}
+	while (fgets(buffer, sizeof(buffer), fd)) {
+		char *rem, *loc, *typ, *stats;
+		int retry = 10;
+		if (_parse_mount(buffer, &rem, &loc, &typ, &stats) < 0)
+			continue;
+		if (strcmp(typ, "dvs"))
+			continue;
+		while (retry-- > 0) {
+			test_debug("Unmount %s\n", loc);
+			if (!umount2(loc, 0))
+				break;
+			if (errno != EBUSY) {
+				perror("unmount");
+				fprintf(stderr, "Could not unmount %s\n", loc);
+				err++;
+				break;
+			}
+			sleep(1);
+		}
+		if (retry < 0 && umount2(loc, MNT_FORCE) < 0) {
+			perror("unmount force");
+			fprintf(stderr, "Could not unmount force %s\n", loc);
+			err++;
+		}
+	}
+	pclose(fd);
+	return (!err) ? 0 : -1;
 }
 
-int
-dvs_mount(const char *remote, const char *local, const char *host, ...)
+int dvs_mount(const char *remote, const char *local, const char *host, ...)
 {
 	char cmd[256];
 	char buf[256];
@@ -323,16 +321,16 @@ dvs_mount(const char *remote, const char *local, const char *host, ...)
 	char *opt;
 	FILE *fd;
 
-        test_debug("Mount %s:%s on %s\n", host, remote, local);
-        p += snprintf(p, e-p, "mount -t dvs -o \"");
-	p += snprintf(p, e-p, "path=%s", remote);
-	p += snprintf(p, e-p, ",nodename=%s", host);
+	test_debug("Mount %s:%s on %s\n", host, remote, local);
+	p += snprintf(p, e - p, "mount -t dvs -o \"");
+	p += snprintf(p, e - p, "path=%s", remote);
+	p += snprintf(p, e - p, ",nodename=%s", host);
 	va_start(args, host);
 	while ((opt = va_arg(args, char *))) {
-		p += snprintf(p, e-p, ",%s", opt);
+		p += snprintf(p, e - p, ",%s", opt);
 	}
 	va_end(args);
-	p += snprintf(p, e-p, "\" %s %s", remote, local);
+	p += snprintf(p, e - p, "\" %s %s", remote, local);
 	if (!(fd = popen(cmd, "r")))
 		return -1;
 	while (fgets(buf, sizeof(buf), fd))
@@ -347,8 +345,7 @@ dvs_mount(const char *remote, const char *local, const char *host, ...)
  *
  * @author jnemeth (9/30/16)
  */
-static void
-_reset_suite(void)
+static void _reset_suite(void)
 {
 	free(_prefix);
 	free(_suite);
@@ -375,8 +372,7 @@ _reset_suite(void)
  *
  * @param force - if non-zero, reset start time even if already set
  */
-static inline void
-_initstarttime(int force)
+static inline void _initstarttime(int force)
 {
 	if (force || (!_starttime.tv_sec && !_starttime.tv_usec))
 		gettimeofday(&_starttime, NULL);
@@ -390,8 +386,7 @@ _initstarttime(int force)
  * @param elapsed - pointer to return structure
  * @param since - starting time, or NULL to use _starttime
  */
-static inline void
-_elapsed(struct timeval *elapsed, struct timeval *since)
+static inline void _elapsed(struct timeval *elapsed, struct timeval *since)
 {
 	_initstarttime(0);
 	if (!since)
@@ -399,10 +394,10 @@ _elapsed(struct timeval *elapsed, struct timeval *since)
 	gettimeofday(elapsed, NULL);
 	if (elapsed->tv_usec < since->tv_usec) {
 		elapsed->tv_usec += 1000000;
-		elapsed->tv_sec  -= 1;
+		elapsed->tv_sec -= 1;
 	}
 	elapsed->tv_usec -= since->tv_usec;
-	elapsed->tv_sec  -= since->tv_sec;
+	elapsed->tv_sec -= since->tv_sec;
 }
 
 /**
@@ -423,8 +418,7 @@ _elapsed(struct timeval *elapsed, struct timeval *since)
  *
  * @return const char* pass/fail string
  */
-static inline const char *
-_passfailtxt(int errcnt, int color)
+static inline const char *_passfailtxt(int errcnt, int color)
 {
 	if (errcnt < 0)
 		return "";
@@ -450,10 +444,9 @@ _passfailtxt(int errcnt, int color)
  *
  * @return const char* error string
  */
-static inline const char *
-_errortxt(int iserr, int color)
+static inline const char *_errortxt(int iserr, int color)
 {
-	if (! iserr)
+	if (!iserr)
 		return "";
 	if (color && _color)
 		return RED "ERROR " BLK;
@@ -469,8 +462,7 @@ _errortxt(int iserr, int color)
  *
  * @return const char* non-NULL name string
  */
-static inline const char *
-_nametxt(const char *name)
+static inline const char *_nametxt(const char *name)
 {
 	return (name) ? name : "test";
 }
@@ -482,8 +474,7 @@ _nametxt(const char *name)
  *
  * @return const char* non-NULL prefix name
  */
-static inline const char *
-_prefixtxt(void)
+static inline const char *_prefixtxt(void)
 {
 	return (_prelen) ? _prefix : "";
 }
@@ -495,8 +486,7 @@ _prefixtxt(void)
  *
  * @return const char* space or empty string
  */
-static inline const char *
-_prefixspace(void)
+static inline const char *_prefixspace(void)
 {
 	return (_prelen) ? " " : "";
 }
@@ -508,8 +498,7 @@ _prefixspace(void)
  *
  * @return const char* non-NULL suite name
  */
-static inline const char *
-_suitetxt(void)
+static inline const char *_suitetxt(void)
 {
 	return (_suite) ? _suite : "all tests";
 }
@@ -523,8 +512,7 @@ _suitetxt(void)
  *
  * @return int 0 on success, -1 on failure
  */
-int
-test_openlog(const char *logpath)
+int test_openlog(const char *logpath)
 {
 	if (logpath && *logpath) {
 		test_closelog();
@@ -538,8 +526,7 @@ test_openlog(const char *logpath)
  *
  * @author jnemeth (9/28/16)
  */
-void
-test_closelog(void)
+void test_closelog(void)
 {
 	if (_logfd) {
 		fclose(_logfd);
@@ -554,8 +541,7 @@ test_closelog(void)
  *
  * @param name - test suite name, or NULL to restore default
  */
-void
-test_set_suite_name(const char *name)
+void test_set_suite_name(const char *name)
 {
 	free(_suite);
 	_suite = (name) ? strdup(name) : NULL;
@@ -568,8 +554,7 @@ test_set_suite_name(const char *name)
  *
  * @param count - failure count to set
  */
-void
-test_set_fail_count(int count)
+void test_set_fail_count(int count)
 {
 	_failcnt = count;
 }
@@ -583,8 +568,7 @@ test_set_fail_count(int count)
  *
  * @return int - old value
  */
-int
-test_set_color(int enable)
+int test_set_color(int enable)
 {
 	int old = _color;
 	_color = enable;
@@ -600,8 +584,7 @@ test_set_color(int enable)
  *
  * @return int - old value
  */
-int
-test_set_verbose(int verbose)
+int test_set_verbose(int verbose)
 {
 	int old = _verbose;
 	if (verbose < 0)
@@ -617,11 +600,10 @@ test_set_verbose(int verbose)
  *
  * @author jnemeth (9/28/16)
  */
-void
-test_verboser(void)
+void test_verboser(void)
 {
-        if (_verbose < TEST_LOG_MAX)
-                _verbose++;
+	if (_verbose < TEST_LOG_MAX)
+		_verbose++;
 }
 
 /**
@@ -629,11 +611,10 @@ test_verboser(void)
  *
  * @author jnemeth (9/28/16)
  */
-void
-test_quieter(void)
+void test_quieter(void)
 {
-        if (_verbose > 0)
-                _verbose--;
+	if (_verbose > 0)
+		_verbose--;
 }
 
 /**
@@ -663,18 +644,18 @@ test_quieter(void)
  * @param fmt - printf-like format
  * @param args - printf-like argument list
  */
-static void
-_vlog2(int errcnt, int threshold, const char *fmt, va_list args)
+static void _vlog2(int errcnt, int threshold, const char *fmt, va_list args)
 {
 	struct timeval elapsed;
-	FILE *fd1 = NULL;	// stdout, stderr, or NULL
-	FILE *fd2 = NULL;	// _logfd, or NULL
+	FILE *fd1 = NULL; // stdout, stderr, or NULL
+	FILE *fd2 = NULL; // _logfd, or NULL
 
 	_elapsed(&elapsed, NULL);
 	if (threshold >= 0 && threshold <= TEST_LOG_MAX) {
 		fd1 = (_verbose >= threshold) ? stdout : NULL;
 		fd2 = (_verbose >= threshold || threshold < TEST_LOG_DEBUG) ?
-			_logfd : NULL;
+			      _logfd :
+			      NULL;
 	} else {
 		fd1 = stderr;
 		fd2 = _logfd;
@@ -683,21 +664,15 @@ _vlog2(int errcnt, int threshold, const char *fmt, va_list args)
 	if (fd1) {
 		va_list args2;
 		va_copy(args2, args);
-		fprintf(fd1, "%s%s%s%s",
-			_prefixtxt(),
-			_prefixspace(),
-			_passfailtxt(errcnt, 1),
-			_errortxt((fd1 == stderr), 1));
+		fprintf(fd1, "%s%s%s%s", _prefixtxt(), _prefixspace(),
+			_passfailtxt(errcnt, 1), _errortxt((fd1 == stderr), 1));
 		vfprintf(fd1, fmt, args2);
 		va_end(args2);
 	}
 	if (fd2) {
-		fprintf(fd2, "%4lld.%06lld %s%s%s%s",
-			(long long) elapsed.tv_sec,
-			(long long) elapsed.tv_usec,
-			_prefixtxt(),
-			_prefixspace(),
-			_passfailtxt(errcnt, 0),
+		fprintf(fd2, "%4lld.%06lld %s%s%s%s", (long long)elapsed.tv_sec,
+			(long long)elapsed.tv_usec, _prefixtxt(),
+			_prefixspace(), _passfailtxt(errcnt, 0),
 			_errortxt((fd1 == stderr), 0));
 		vfprintf(fd2, fmt, args);
 	}
@@ -712,8 +687,7 @@ _vlog2(int errcnt, int threshold, const char *fmt, va_list args)
  * @param threshold - see _vlog2()
  * @param fmt - see _vlog2()
  */
-static void
-_log2(int errcnt, int threshold, const char *fmt, ...)
+static void _log2(int errcnt, int threshold, const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
@@ -728,13 +702,12 @@ _log2(int errcnt, int threshold, const char *fmt, ...)
  *
  * @param fmt - printf-like format
  */
-void
-test_debug(const char *fmt, ...)
+void test_debug(const char *fmt, ...)
 {
-        va_list args;
-        va_start(args, fmt);
-        _vlog2(-1, TEST_LOG_DEBUG, fmt, args);
-        va_end(args);
+	va_list args;
+	va_start(args, fmt);
+	_vlog2(-1, TEST_LOG_DEBUG, fmt, args);
+	va_end(args);
 }
 
 /**
@@ -744,8 +717,7 @@ test_debug(const char *fmt, ...)
  *
  * @param fmt - printf-like format
  */
-void
-test_info(const char *fmt, ...)
+void test_info(const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
@@ -760,8 +732,7 @@ test_info(const char *fmt, ...)
  *
  * @param fmt - printf-like format
  */
-void
-test_log(const char *fmt, ...)
+void test_log(const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
@@ -776,8 +747,7 @@ test_log(const char *fmt, ...)
  *
  * @param fmt - printf-like format
  */
-void
-test_err(const char *fmt, ...)
+void test_err(const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
@@ -801,8 +771,7 @@ test_err(const char *fmt, ...)
  *
  * @param name - name of this test
  */
-void
-test_begin(const char *name)
+void test_begin(const char *name)
 {
 	_initstarttime(0);
 	name = _nametxt(name);
@@ -840,8 +809,7 @@ test_begin(const char *name)
  *
  * @return int - 0 if the test passed, -1 otherwise
  */
-int
-test_complete(void)
+int test_complete(void)
 {
 	struct timeval elapsed;
 	char *newname;
@@ -849,7 +817,8 @@ test_complete(void)
 
 	if (--_depth < 0) {
 		_depth = 0;
-		test_err("Coding error, test_complete() called without test_begin()\n");
+		test_err(
+			"Coding error, test_complete() called without test_begin()\n");
 		return -1;
 	}
 	_elapsed(&elapsed, &_times[_depth]);
@@ -861,13 +830,12 @@ test_complete(void)
 	_prelen -= strlen(newname) + 1;
 	_prefix[_prelen] = 0;
 	free(newname);
-	if (errcnt && _depth-1 >= 0)
-		_errors[_depth-1] += errcnt;
+	if (errcnt && _depth - 1 >= 0)
+		_errors[_depth - 1] += errcnt;
 	return (errcnt) ? -1 : 0;
 }
 
-void
-test_suite_begin(const char *name)
+void test_suite_begin(const char *name)
 {
 	_initstarttime(1);
 	_reset_suite();
@@ -875,15 +843,15 @@ test_suite_begin(const char *name)
 	_log2(-1, TEST_LOG_NONE, "\n'%s' started\n", _suitetxt());
 }
 
-int
-test_suite_complete(void)
+int test_suite_complete(void)
 {
 	struct timeval elapsed;
 	int errcnt = _failcnt;
 
 	_elapsed(&elapsed, NULL);
-	_log2(errcnt, TEST_LOG_NONE, "'%s' completed with %d errors (%d.%06d sec)\n",
-	      _suitetxt(), errcnt, elapsed.tv_sec, elapsed.tv_usec);
+	_log2(errcnt, TEST_LOG_NONE,
+	      "'%s' completed with %d errors (%d.%06d sec)\n", _suitetxt(),
+	      errcnt, elapsed.tv_sec, elapsed.tv_usec);
 	_reset_suite();
 	return (errcnt) ? -1 : 0;
 }
@@ -902,11 +870,11 @@ test_suite_complete(void)
  *
  * @return int - new failure count
  */
-static int
-_check_complete_return(int err, int exp, int fail)
+static int _check_complete_return(int err, int exp, int fail)
 {
 	if (err != exp) {
-		fprintf(stderr, "Unexpected test_complete result %d != %d\n", err, exp);
+		fprintf(stderr, "Unexpected test_complete result %d != %d\n",
+			err, exp);
 		fail++;
 	}
 	return fail;
@@ -927,8 +895,7 @@ _check_complete_return(int err, int exp, int fail)
  *
  * @return int - new failure count
  */
-static int
-_count_log_lines(const char *path, int exp, int fail)
+static int _count_log_lines(const char *path, int exp, int fail)
 {
 	char buffer[256];
 	FILE *fd;
@@ -949,7 +916,8 @@ _count_log_lines(const char *path, int exp, int fail)
 			fprintf(stdout, ">> %s", buffer);
 		}
 	} else if (count != exp) {
-		fprintf(stderr, "Log file line count not expected, %d != %d\n", count, exp);
+		fprintf(stderr, "Log file line count not expected, %d != %d\n",
+			count, exp);
 		rewind(fd);
 		while (fgets(buffer, sizeof(buffer), fd)) {
 			fprintf(stderr, ">> %s", buffer);
@@ -968,8 +936,7 @@ _count_log_lines(const char *path, int exp, int fail)
  *
  * @return int - 0 if the test is successful, -1 otherwise
  */
-int
-selftest_common(void)
+int selftest_common(void)
 {
 	char *logname = "/tmp/selftest_common.log";
 	int fail = 0;
@@ -1056,7 +1023,7 @@ selftest_common(void)
 	test_log("log message\n");
 	test_err("error message\n");
 	test_closelog();
-	fail = _count_log_lines(logname, 3, fail);	// err, log, info
+	fail = _count_log_lines(logname, 3, fail); // err, log, info
 
 	test_log("\nTest stand-alone log file, verbosity 1\n");
 	test_openlog(logname);
@@ -1066,7 +1033,7 @@ selftest_common(void)
 	test_log("log message\n");
 	test_err("error message\n");
 	test_closelog();
-	fail = _count_log_lines(logname, 3, fail);	// err, log, info
+	fail = _count_log_lines(logname, 3, fail); // err, log, info
 
 	test_log("\nTest stand-alone log file, verbosity 2\n");
 	test_openlog(logname);
@@ -1076,7 +1043,7 @@ selftest_common(void)
 	test_log("log message\n");
 	test_err("error message\n");
 	test_closelog();
-	fail = _count_log_lines(logname, 4, fail);	// err, log, info, debug
+	fail = _count_log_lines(logname, 4, fail); // err, log, info, debug
 
 	test_log("\nTest log file format, verbosity 2\n");
 	test_openlog(logname);
@@ -1086,7 +1053,7 @@ selftest_common(void)
 	test_log("log message\n");
 	test_err("error message\n");
 	test_closelog();
-	fail = _count_log_lines(logname, -1, fail);	// display only
+	fail = _count_log_lines(logname, -1, fail); // display only
 
 	/*
 	 * Final message
@@ -1097,5 +1064,3 @@ selftest_common(void)
 	test_log("\n");
 	return test_suite_complete();
 }
-
-

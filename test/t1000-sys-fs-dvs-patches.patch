@@ -1,0 +1,93 @@
+diff --git a/include/common/ssi_proc.h b/include/common/ssi_proc.h
+index ba406b10..a2b987ad 100644
+--- a/include/common/ssi_proc.h
++++ b/include/common/ssi_proc.h
+@@ -38,6 +38,7 @@
+ #define DVS_SYSFS_ESTALE_TIMEOUT        "estale_timeout_secs"
+ #define DVS_SYSFS_DROP_CACHES           "drop_caches"
+ #define DVS_SYSFS_QUIESCE               "quiesce"
++#define DVS_SYSFS_PATCHES               "patches"
+ 
+ #define DVS_DEBUGFS_DIR                 "dvs"
+ #define DVS_DEBUGFS_MOUNTS_DIR          "mounts"
+diff --git a/kernel/dvsproc/sys_setup.c b/kernel/dvsproc/sys_setup.c
+index 71baf03f..8beeebab 100644
+--- a/kernel/dvsproc/sys_setup.c
++++ b/kernel/dvsproc/sys_setup.c
+@@ -55,6 +55,64 @@ EXPORT_SYMBOL(quiesced_dirs);
+ DECLARE_RWSEM(quiesce_barrier_rwsem);
+ EXPORT_SYMBOL(quiesce_barrier_rwsem);
+ 
++/*
++ * Note /sys/kernel/debug/patches is basically a buffer we can use
++ * for testing DVS with patches. Its intent is to know when/if the
++ * DVS we're using has been patched or not.
++ * All in one block to make patching easier.
++ *
++ * Basically, we setup a char* array that is just a bunch of strings
++ * that way DVS tests can just grep for their own name out of this
++ * sys file to know if their patch has applied or not.
++ *
++ * Each patch just throws in a string that will be that patches name,
++ * ideally the tNNNN-patch.t name.
++ *
++ * Store doesn't do anything for this /sys interface.
++ */
++static const char patches[] = "\0"
++                              /* PATCH START */
++                              "t1000-sys-fs-dvs-patches.t\0"
++                              /* PATCH END */
++                              "\0";
++
++static ssize_t debug_patches_show(struct kobject *kobj,
++                                  struct kobj_attribute *attr, char *buf);
++
++static ssize_t debug_patches_show(struct kobject *kobj,
++                                  struct kobj_attribute *attr, char *buffer) {
++  size_t idx = 1;
++  size_t len = 0;
++
++  /* we (ab)used \0 in our char array, loop through it with a peek to see if we
++  see a \0\0 */
++  do {
++    if (patches[idx] == '\0' && patches[idx + 1] == '\0') {
++      break;
++    } else {
++      len += sprintf(buffer + len, "%s\n", &patches[idx]);
++      idx += strlen(&patches[idx]) + 1;
++    }
++  } while (1);
++
++  return len;
++}
++
++static ssize_t debug_patches_store(struct kobject *kobj,
++                                   struct kobj_attribute *attr, char *buf,
++                                   size_t count);
++/* debug_patches_store is a nop */
++static ssize_t debug_patches_store(struct kobject *kobj,
++                                   struct kobj_attribute *attr, char *buffer,
++                                   size_t count) {
++  return 0;
++}
++
++static struct kobj_attribute attr_patches = {
++    .attr = {.name = DVS_SYSFS_PATCHES, .mode = S_IFREG | S_IRUGO | S_IWUSR},
++    .show = debug_patches_show,
++    .store = debug_patches_store};
++
+ static ssize_t quiesce_write(struct kobject *kobj, struct kobj_attribute *attr,
+ 				const char *buffer, size_t count);
+ static ssize_t quiesce_show(struct kobject *kobj, struct kobj_attribute *attr,
+@@ -802,6 +860,11 @@ int create_dvs_sysfs_dirs(void)
+                         __func__, DVS_SYSFS_DIR, DVS_SYSFS_DROP_CACHES);
+                 return -ENOMEM;
+         }
++        if (sysfs_create_file(dvs_kobj, &attr_patches.attr)) {
++          printk(KERN_ERR "DVS: %s: cannot init /sys/fs/%s/%s\n", __func__,
++                 DVS_SYSFS_DIR, DVS_SYSFS_PATCHES);
++          return -ENOMEM;
++        }
+ 
+         return 0;
+ }

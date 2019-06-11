@@ -1,7 +1,7 @@
 /*
  * Unpublished Work © 2003 Unlimited Scale, Inc.  All rights reserved.
  * Unpublished Work © 2004 Cassatt Corporation    All rights reserved.
- * Copyright 2006-2011, 2013-2017 Cray Inc. All Rights Reserved.
+ * Copyright 2006-2011, 2013-2018 Cray Inc. All Rights Reserved.
  *
  * This file is part of Cray Data Virtualization Service (DVS).
  *
@@ -47,9 +47,10 @@
 #include "common/kernel/kernel_interface.h"
 #include "common/kernel/usiipc.h"
 
-MODULE_LICENSE(DVS_LICENSE);
+MODULE_LICENSE("GPL");
 
-/* The transport layer init sets the ops table pointer during it's initialization */
+/* The transport layer init sets the ops table pointer during it's
+ * initialization */
 struct ipc_operations *vipc = NULL;
 
 /* forward */
@@ -78,7 +79,7 @@ static inline void setup_reply(struct usiipc *reply)
 int ipc_init(ssize_t *max_transport_msg_size)
 {
 	int ret;
-	if(vipc && vipc->init)
+	if (vipc && vipc->init)
 		ret = vipc->init(max_transport_msg_size);
 	else {
 		printk("%s not initialized\n", __func__);
@@ -89,26 +90,26 @@ int ipc_init(ssize_t *max_transport_msg_size)
 
 void ipc_term(void)
 {
-    vipc->term();
+	vipc->term();
 }
 
 dvs_tx_desc_t register_ipc_request(struct usiipc *request)
 {
-    return(vipc->regisrq(request));
+	return (vipc->regisrq(request));
 }
 
 /*
  * send an ipc request to the specified node
  */
-int send_ipc_request(int node, int command,
-		     struct usiipc *request, int request_size,
-		     struct usiipc *reply, int reply_size, time_t identity)
+int send_ipc_request(int node, int command, struct usiipc *request,
+		     int request_size, struct usiipc *reply, int reply_size,
+		     time_t identity)
 {
 	int rval;
 
 	if ((reply == NULL) || (reply_size <= 0)) {
 		printk(KERN_ERR "DVS: send_ipc_request: IPC synchronous "
-		       "message without reply\n");
+				"message without reply\n");
 		return -USIERR_IPC_PROTO;
 	}
 
@@ -123,41 +124,44 @@ int send_ipc_request(int node, int command,
 	request->receiver_identity = identity;
 
 	if (request->notify_of_abnormal_send) {
-		printk(KERN_ERR "DVS: send_ipc_request: IPC synchronous "
-			"unexpectedly requests abnormal notification!\n");
+		printk(KERN_ERR
+		       "DVS: send_ipc_request: IPC synchronous "
+		       "unexpectedly requests abnormal notification!\n");
 	}
 
 	if ((identity != 0) && (!identity_valid(node, identity))) {
 		rval = -EHOSTDOWN;
-		KDEBUG_IPC(0, "DVS: send_ipc_request forced EHOSTDOWN node %s\n",
+		KDEBUG_IPC(0,
+			   "DVS: send_ipc_request forced EHOSTDOWN node %s\n",
 			   SSI_NODE_NAME(node));
 	} else {
 		rval = vipc->sendrq(request);
 		if (rval < 0) {
-			KDEBUG_IPC(0, "DVS: send_ipc_request failed node %s rval "
-				   "%d\n", SSI_NODE_NAME(node), rval);
+			KDEBUG_IPC(0,
+				   "DVS: send_ipc_request failed node %s rval "
+				   "%d\n",
+				   SSI_NODE_NAME(node), rval);
 		}
-		dvsproc_stat_update(NULL, DVSPROC_STAT_IPC_REQUEST, 0, rval);
+		dvsdebug_stat_update(NULL, DVSSYS_STAT_IPC_REQUEST, 0, rval);
 	}
 
-	return(rval);
+	return (rval);
 }
 
 /*
  * send an ipc request to the specified node asynchronously
  */
-int send_ipc_request_async(int node, int command,
-			   struct usiipc *request, int request_size,
-			   struct usiipc *reply, int reply_size,
-			   time_t identity)
+int send_ipc_request_async(int node, int command, struct usiipc *request,
+			   int request_size, struct usiipc *reply,
+			   int reply_size, time_t identity)
 {
 	int rval;
 
 	setup_request(request);
 	request->request_length = request_size;
 
-	if (request->notify_of_abnormal_send && (request->retry ||
-		(request->target_node != node))) {
+	if (request->notify_of_abnormal_send &&
+	    (request->retry || (request->target_node != node))) {
 		request->abnormal_handler(request, node);
 	}
 	request->target_node = node;
@@ -175,19 +179,23 @@ int send_ipc_request_async(int node, int command,
 #endif
 	if ((identity != 0) && (!identity_valid(node, identity))) {
 		rval = -EHOSTDOWN;
-		KDEBUG_IPC(0, "DVS: send_ipc_request_async forced EHOSTDOWN node "
-			   "%s %ld %d \n", SSI_NODE_NAME(node), identity,
+		KDEBUG_IPC(0,
+			   "DVS: send_ipc_request_async forced EHOSTDOWN node "
+			   "%s %ld %d \n",
+			   SSI_NODE_NAME(node), identity,
 			   identity_valid(node, identity));
 	} else {
 		rval = vipc->sendrqa(request);
 		if (rval < 0) {
-			KDEBUG_IPC(0, "DVS: send_ipc_request_async: failed node "
-				   "%s rval %d\n", SSI_NODE_NAME(node), rval);
+			KDEBUG_IPC(0,
+				   "DVS: send_ipc_request_async: failed node "
+				   "%s rval %d\n",
+				   SSI_NODE_NAME(node), rval);
 		}
-		dvsproc_stat_update(NULL, DVSPROC_STAT_IPC_REQUEST_ASYNC, 0,
-				    rval);
+		dvsdebug_stat_update(NULL, DVSSYS_STAT_IPC_REQUEST_ASYNC, 0,
+				     rval);
 	}
-	return(rval);
+	return (rval);
 }
 
 /*
@@ -195,13 +203,13 @@ int send_ipc_request_async(int node, int command,
  */
 int wait_for_async_request(struct usiipc *request)
 {
-	BUG_ON(request->state != ST_SEND_COMPL &&
-		request->state != ST_WAIT_CLEANUP);
+	DVS_BUG_ON(request->state != ST_SEND_COMPL &&
+		   request->state != ST_WAIT_CLEANUP);
 
 	if (request->reply_address == NULL) {
 		printk(KERN_ERR "DVS: wait_for_async_request: Cannot wait for "
-		       "a null reply\n");
-		return(-USIERR_IPC_PROTO);
+				"a null reply\n");
+		return (-USIERR_IPC_PROTO);
 	}
 
 	return vipc->waitrqa(request);
@@ -213,13 +221,18 @@ int wait_for_async_request(struct usiipc *request)
  * the original is not modified if nocopy is true, the reply message is "given"
  * to the ipc layer and will be freed (must have been kmalloc'd)
  */
-int send_ipc_reply (struct usiipc *request, struct usiipc *reply, int reply_size, int nocopy)
+int send_ipc_reply(struct usiipc *request, struct usiipc *reply, int reply_size,
+		   int nocopy)
 {
 	int rval;
 
 	setup_reply(reply);
 	reply->free_required = nocopy;
 	reply->command = RQ_REPLY;
+	if (request->process_time_us > 0)
+		reply->process_time_us =
+			dvs_time_get_us() - request->process_time_us;
+	reply->queue_time_us = request->queue_time_us;
 	reply->target_node = request->source_node;
 	reply->request_length = reply_size;
 	reply->reply_address = request->reply_address;
@@ -233,11 +246,12 @@ int send_ipc_reply (struct usiipc *request, struct usiipc *reply, int reply_size
 	 */
 	if (reply_size > request->reply_length) {
 		printk(KERN_ERR "DVS: send_ipc_reply: reply length "
-		       "error: %d %d\n", reply_size, request->reply_length);
+				"error: %d %d\n",
+		       reply_size, request->reply_length);
 		if (reply->free_required) {
 			free_msg(reply);
 		}
-		return(-USIERR_IPC_PROTO);
+		return (-USIERR_IPC_PROTO);
 	}
 
 #ifdef IPC_DUMP_EVENTS
@@ -251,21 +265,21 @@ int send_ipc_reply (struct usiipc *request, struct usiipc *reply, int reply_size
 		if (reply->free_required) {
 			free_msg(reply);
 		}
-		return(0);
+		return (0);
 	}
-	
-	rval = vipc->sendrp(request, reply, reply_size);
-	dvsproc_stat_update(NULL, DVSPROC_STAT_IPC_REPLY, 0, rval);
 
-	return(rval);
+	rval = vipc->sendrp(request, reply, reply_size);
+	dvsdebug_stat_update(NULL, DVSSYS_STAT_IPC_REPLY, 0, rval);
+
+	return (rval);
 }
 
 int ipc_get_params(int *ic_type, int *ic_limit)
 {
 	if (vipc->get_params) {
-		return(vipc->get_params(ic_type, ic_limit));
+		return (vipc->get_params(ic_type, ic_limit));
 	} else {
-		return(-USIERR_IPC_PROTO);
+		return (-USIERR_IPC_PROTO);
 	}
 }
 
@@ -349,69 +363,73 @@ int unmap_ipc_memory(void *addr, void *handle)
 /*
  * Send get request to remote node
  */
-int ipc_rma_get(int node, char *to, char *from, ssize_t length, void *rma_handle)
+int ipc_rma_get(int node, char *to, char *from, ssize_t length,
+		void *rma_handle)
 {
 	if (vipc->rmaget) {
-		return(PTR_ERR(vipc->rmaget(node, to, from, length, rma_handle, 0)));
+		return (PTR_ERR(
+			vipc->rmaget(node, to, from, length, rma_handle, 0)));
 	} else {
-		return(-USIERR_IPC_PROTO);
+		return (-USIERR_IPC_PROTO);
 	}
 }
 
 /*
  * Send put request to remote node
  */
-int ipc_rma_put(int node, char *to, char *from, ssize_t length, void *rma_handle)
+int ipc_rma_put(int node, char *to, char *from, ssize_t length,
+		void *rma_handle)
 {
 	if (vipc->rmaput) {
-		return(PTR_ERR(vipc->rmaput(node, to, from, length, rma_handle, 0)));
+		return (PTR_ERR(
+			vipc->rmaput(node, to, from, length, rma_handle, 0)));
 	} else {
-		return(-USIERR_IPC_PROTO);
+		return (-USIERR_IPC_PROTO);
 	}
 }
 
 /*
  * Send get request to remote node
  */
-void *ipc_rma_get_async(int node, char *to, char *from, ssize_t length, 
-                        void *rma_handle)
+void *ipc_rma_get_async(int node, char *to, char *from, ssize_t length,
+			void *rma_handle)
 {
 	if (vipc->rmaget) {
-		return(vipc->rmaget(node, to, from, length, rma_handle, 1));
+		return (vipc->rmaget(node, to, from, length, rma_handle, 1));
 	} else {
-		return(ERR_PTR(-USIERR_IPC_PROTO));
+		return (ERR_PTR(-USIERR_IPC_PROTO));
 	}
 }
 
 /*
  * Send put request to remote node
  */
-void *ipc_rma_put_async(int node, char *to, char *from, ssize_t length, 
-                        void *rma_handle)
+void *ipc_rma_put_async(int node, char *to, char *from, ssize_t length,
+			void *rma_handle)
 {
 	if (vipc->rmaput) {
-		return(vipc->rmaput(node, to, from, length, rma_handle, 1));
+		return (vipc->rmaput(node, to, from, length, rma_handle, 1));
 	} else {
-		return(ERR_PTR(-USIERR_IPC_PROTO));
+		return (ERR_PTR(-USIERR_IPC_PROTO));
 	}
 }
 
-int
-ipc_rma_wait(rma_info_t *rip)
+int ipc_rma_wait(rma_info_t *rip)
 {
 	if (vipc->rmawait) {
 		vipc->rmawait(rip);
 	} else {
-		return(-USIERR_IPC_PROTO);
+		return (-USIERR_IPC_PROTO);
 	}
 	return 0;
 }
 
 void register_ipc_read_complete(void *handle,
-	void (*read_handler)(void *rq, int status, void *addr, size_t length),
-	void *rq)
+				void (*read_handler)(void *rq, int status,
+						     void *addr, size_t length),
+				void *rq)
 {
-	struct ipc_mapping *ipcmap = (struct ipc_mapping *) handle;
+	struct ipc_mapping *ipcmap = (struct ipc_mapping *)handle;
 
 	ipcmap->read_handler = read_handler;
 	ipcmap->prq = rq;
@@ -437,25 +455,27 @@ static void *generic_map_ipc_user_memory(char *uvm, ssize_t length, int rw)
 	offset = (uint64_t)uvm & (PAGE_SIZE - 1);
 	npages = (offset + length + (PAGE_SIZE - 1)) / PAGE_SIZE;
 
-	pages = (struct page **)kmalloc_ssi(npages * sizeof(struct page *), GFP_KERNEL);
+	pages = (struct page **)kmalloc_ssi(npages * sizeof(struct page *),
+					    GFP_KERNEL);
 	if (!pages) {
 		goto out;
 	}
 
-	ipcmap = kmalloc_ssi(sizeof(struct ipc_mapping) +
-				(npages * sizeof(u64)), GFP_KERNEL);
+	ipcmap =
+		kmalloc_ssi(sizeof(struct ipc_mapping) + (npages * sizeof(u64)),
+			    GFP_KERNEL);
 	if (!ipcmap) {
 		kfree_ssi(pages);
 		goto out;
 	}
 
 	down_read(&current->mm->mmap_sem);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,4,73)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 73)
 	ret = get_user_pages(current, current->mm, (unsigned long)uvm, npages,
-				rw == READ, 0, pages, NULL);
+			     rw == READ, 0, pages, NULL);
 #else
 	ret = get_user_pages((unsigned long)uvm, npages,
-				(rw == READ ? FOLL_WRITE : 0), pages, NULL);
+			     (rw == READ ? FOLL_WRITE : 0), pages, NULL);
 #endif
 	up_read(&current->mm->mmap_sem);
 
@@ -464,14 +484,14 @@ static void *generic_map_ipc_user_memory(char *uvm, ssize_t length, int rw)
 		goto err;
 	}
 
-	ipcmap->addr       = uvm;
-	ipcmap->length     = length;
-	ipcmap->pages      = pages;
+	ipcmap->addr = uvm;
+	ipcmap->length = length;
+	ipcmap->pages = pages;
 	ipcmap->page_count = npages;
-	ipcmap->rw         = rw;
+	ipcmap->rw = rw;
 	ipcmap->dma_length = ret;
 
-	for (i = 0; i < ipcmap->dma_length/* also page_count */; i++) {
+	for (i = 0; i < ipcmap->dma_length /* also page_count */; i++) {
 		ipcmap->dma[i] = page_to_phys(pages[i]);
 	}
 	retp = ipcmap;
@@ -481,7 +501,7 @@ out:
 
 err:
 	for (i = 0; i < ret; i++) {
-		page_cache_release(pages[i]);
+		put_page(pages[i]);
 	}
 	kfree_ssi(ipcmap);
 	kfree_ssi(pages);
@@ -490,7 +510,7 @@ err:
 	if (ret < 0) {
 		return (ERR_PTR(ret));
 	}
-	
+
 	return NULL;
 }
 
@@ -503,7 +523,7 @@ static int generic_unmap_ipc_user_memory(void *handle)
 		return 0;
 	}
 
-	for (i = 0; i < ipcmap->page_count/* also dma_length */; i++) {
+	for (i = 0; i < ipcmap->page_count /* also dma_length */; i++) {
 		/*
 		 * If we did a read, mark the page dirty so that we don't
 		 * end up discarding the data we need.
@@ -511,7 +531,7 @@ static int generic_unmap_ipc_user_memory(void *handle)
 		if (ipcmap->rw == READ) {
 			set_page_dirty_lock(ipcmap->pages[i]);
 		}
-		page_cache_release(ipcmap->pages[i]);
+		put_page(ipcmap->pages[i]);
 	}
 
 	kfree_ssi(ipcmap->pages);
@@ -536,8 +556,9 @@ static void *generic_map_ipc_kernel_memory(char *kvm, ssize_t length, int rw)
 	if (pages == NULL)
 		return NULL;
 
-	ipcmap = kmalloc_ssi(sizeof(struct ipc_mapping) +
-	                     (npages * sizeof(u64)), GFP_KERNEL);
+	ipcmap =
+		kmalloc_ssi(sizeof(struct ipc_mapping) + (npages * sizeof(u64)),
+			    GFP_KERNEL);
 	if (ipcmap == NULL) {
 		kfree_ssi(pages);
 		return NULL;
@@ -558,7 +579,7 @@ static void *generic_map_ipc_kernel_memory(char *kvm, ssize_t length, int rw)
 		} else if (virt_addr_valid(kvm)) {
 			ipcmap->pages[i] = virt_to_page(kvm);
 		} else {
-			BUG();
+			DVS_BUG();
 		}
 
 		ipcmap->dma[i] = page_to_phys(pages[i]);
@@ -586,9 +607,9 @@ int count_ipc_memory(void *handle)
 	struct ipc_mapping *ipcmap = handle;
 
 	if (handle == CALLBACK_RMA_HANDLE)
-		return(0);
+		return (0);
 
-	return(ipcmap->dma_length);
+	return (ipcmap->dma_length);
 }
 
 void build_rma_list(void *handle, u64 *pages)
@@ -599,15 +620,19 @@ void build_rma_list(void *handle, u64 *pages)
 	if (handle == CALLBACK_RMA_HANDLE)
 		return;
 
-	for (i=0; i < ipcmap->dma_length; i++) {
+	for (i = 0; i < ipcmap->dma_length; i++) {
 		pages[i] = ipcmap->dma[i];
 	}
 }
 
-void setup_rma(struct rma_state *rmasp, int node, void *handle, char *remote_addr, int flush)
+void setup_rma(struct rma_state *rmasp, int node, void *handle,
+	       char *remote_addr, int flush)
 {
-	KDEBUG_IPC(0, "DVS: setup_rma: remap 0x%p, node %s, handle 0x%p, raddr 0x%p, "
-		" flush %d\n",rmasp, SSI_NODE_NAME(node), handle, remote_addr,flush);
+	KDEBUG_IPC(
+		0,
+		"DVS: setup_rma: remap 0x%p, node %s, handle 0x%p, raddr 0x%p, "
+		" flush %d\n",
+		rmasp, SSI_NODE_NAME(node), handle, remote_addr, flush);
 
 	rmasp->handle = handle;
 	rmasp->node = node;
@@ -626,7 +651,7 @@ int end_rma(struct rma_state *rmasp, void *handle)
 	int rval = 0;
 	if (rmasp->handle != handle) {
 		printk(KERN_ERR "DVS: end_rma: handle mismatch\n");
-		rmasp->flush = 0; 	/* avoid flush RMA for busted handle */
+		rmasp->flush = 0; /* avoid flush RMA for busted handle */
 		rval = -EINVAL;
 	}
 
@@ -634,28 +659,29 @@ int end_rma(struct rma_state *rmasp, void *handle)
 		int ret;
 		ret = vipc->end_rma(rmasp);
 		if (rval == 0) {
-			rval = ret;	/* propagate end_rma errors */
+			rval = ret; /* propagate end_rma errors */
 		}
 	}
 	return rval;
 }
 
 #define DUMP_VERBOSE 0
-void
-dump_request (struct usiipc *request)
+void dump_request(struct usiipc *request)
 {
 	KDEBUG_IPC(0, "DVS: dump_request: dumping request at 0x%p:\n", request);
 #if DUMP_VERBOSE
 	sleep(1);
 	KDEBUG_IPC(0, "    request_length %d\n", request->request_length);
-	KDEBUG_IPC(0, "    target_node %s\n", SSI_NODE_NAME(request->target_node));
-	KDEBUG_IPC(0, "    source_node %s\n", SSI_NODE_NAME(request->source_node));
+	KDEBUG_IPC(0, "    target_node %s\n",
+		   SSI_NODE_NAME(request->target_node));
+	KDEBUG_IPC(0, "    source_node %s\n",
+		   SSI_NODE_NAME(request->source_node));
 	KDEBUG_IPC(0, "    reply_address 0x%p\n", request->reply_address);
 	KDEBUG_IPC(0, "    reply_length %d\n", request->reply_length);
 	KDEBUG_IPC(0, "    wakeup_word 0x%p\n", request->wakeup_word);
 #endif
 	KDEBUG_IPC(0, "    command %d (%s)\n", request->command,
-			rq_cmd_name(request));
+		   rq_cmd_name(request));
 #if DUMP_VERBOSE
 	KDEBUG_IPC(0, "    callback_command %d\n", request->callback_command);
 	KDEBUG_IPC(0, "    free_required %d\n", request->free_required);
@@ -667,7 +693,8 @@ dump_request (struct usiipc *request)
 	KDEBUG_IPC(0, "    priority %ld\n", request->priority);
 	KDEBUG_IPC(0, "    msgwait 0x%p\n", &request->msgwait);
 	KDEBUG_IPC(0, "    sender_identity %ld\n", request->sender_identity);
-	KDEBUG_IPC(0, "    receiver_identity %ld\n", request->receiver_identity);
+	KDEBUG_IPC(0, "    receiver_identity %ld\n",
+		   request->receiver_identity);
 	KDEBUG_IPC(0, "    sender_pid %d\n", request->sender_pid);
 	sleep(1);
 #endif
@@ -691,7 +718,6 @@ void ipc_release_thread(void)
 {
 	return vipc->release_thread();
 }
-
 
 EXPORT_SYMBOL(register_ipc_request);
 EXPORT_SYMBOL(send_ipc_request);

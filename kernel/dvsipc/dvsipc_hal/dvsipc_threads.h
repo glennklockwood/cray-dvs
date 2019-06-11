@@ -1,6 +1,6 @@
 /* -*- c-basic-offset: 4; indent-tabs-mode: nil-*- */
 /*
- * Copyright 2015-2016 Cray Inc. All Rights Reserved.
+ * Copyright 2015-2016,2018 Cray Inc. All Rights Reserved.
  *
  * This file is part of Cray Data Virtualization Service (DVS).
  *
@@ -42,7 +42,8 @@
 #include "dvs/kernel/usifile.h"
 #include "dvsipc.h"
 
-#define DVSIPC_DESTROY_THREAD_TIMEOUT 60
+int init_dev_file(void);
+void remove_dev_file(void);
 
 enum dvsipc_thread_state {
 	DVSIPC_THREAD_IDLE,
@@ -83,6 +84,7 @@ struct dvsipc_thread_pool {
 	unsigned int in_progress_creates;
 	unsigned int max_concurrent_creates;
 	struct list_head thread_list;
+	struct semaphore thread_beckon_sema;
 
 	unsigned int state_counts[DVSIPC_THREAD_STATE_MAX];
 	struct list_head state_lists[DVSIPC_THREAD_STATE_MAX];
@@ -97,9 +99,11 @@ struct dvsipc_thread_pool {
 
 #define dvsipc_set_thread_idle(t) dvsipc_set_thread_state(t, DVSIPC_THREAD_IDLE)
 #define dvsipc_set_thread_busy(t) dvsipc_set_thread_state(t, DVSIPC_THREAD_BUSY)
-#define dvsipc_set_thread_blocked(t) dvsipc_set_thread_state(t, DVSIPC_THREAD_BLOCKED)
+#define dvsipc_set_thread_blocked(t)                                           \
+	dvsipc_set_thread_state(t, DVSIPC_THREAD_BLOCKED)
 #define dvsipc_set_thread_exit(t) dvsipc_set_thread_state(t, DVSIPC_THREAD_EXIT)
-#define dvsipc_set_thread_destroy(t) dvsipc_set_thread_state(t, DVSIPC_THREAD_DESTROY)
+#define dvsipc_set_thread_destroy(t)                                           \
+	dvsipc_set_thread_state(t, DVSIPC_THREAD_DESTROY)
 
 #define dvsipc_idle_threads(p) (p->state_counts[DVSIPC_THREAD_IDLE])
 #define dvsipc_busy_threads(p) (p->state_counts[DVSIPC_THREAD_BUSY])
@@ -111,7 +115,8 @@ struct dvsipc_thread_pool {
 #define dvsipc_put_thread(t) kref_put(&t->ref, dvsipc_free_thread)
 extern void dvsipc_free_thread(struct kref *ref);
 
-extern int dvsipc_set_thread_state(struct dvsipc_thread *thread, enum dvsipc_thread_state state);
+extern int dvsipc_set_thread_state(struct dvsipc_thread *thread,
+				   enum dvsipc_thread_state state);
 
 extern int dvsipc_check_exit_thread(struct dvsipc_thread *thread);
 extern int dvsipc_check_create_thread(struct dvsipc_thread_pool *thread_pool);
@@ -119,12 +124,9 @@ extern int dvsipc_check_create_thread(struct dvsipc_thread_pool *thread_pool);
 extern int dvsipc_start_thread_pool(struct dvsipc_thread_pool *thread_pool);
 extern int dvsipc_stop_thread_pool(struct dvsipc_thread_pool *thread_pool);
 extern int dvsipc_remove_thread_pool(struct dvsipc_thread_pool *thread_pool);
-extern struct dvsipc_thread_pool *dvsipc_create_thread_pool(const char *name,
-                                                            unsigned int max_threads,
-                                                            unsigned int min_threads,
-                                                            unsigned int start_threads,
-                                                            unsigned int concurrent_creates,
-                                                            int nice);
+extern struct dvsipc_thread_pool *
+dvsipc_create_thread_pool(const char *name, unsigned int max_threads,
+			  unsigned int min_threads, unsigned int start_threads,
+			  unsigned int concurrent_creates, int nice);
 
-#endif  /* _DVSIPC_H */
-
+#endif /* _DVSIPC_H */

@@ -28,11 +28,11 @@
 #endif /* __KERNEL__ */
 
 struct fcntl_desc {
-	char	*cmd_name;	/* string for command */
-	int	cmd;		/* FCNTL cmd */
-	int 	arg_size;	/* Size of argument or reference */
-	char	arg_is_ref:1;	/* Passed by value or reference */
-	char	arg_rw:1;	/* Passed by reference and not const */
+	char *cmd_name; /* string for command */
+	int cmd; /* FCNTL cmd */
+	int arg_size; /* Size of argument or reference */
+	char arg_is_ref : 1; /* Passed by value or reference */
+	char arg_rw : 1; /* Passed by reference and not const */
 };
 
 extern struct fcntl_desc *get_fcntl_desc(int cmd);

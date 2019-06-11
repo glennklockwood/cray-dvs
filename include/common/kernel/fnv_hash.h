@@ -30,11 +30,10 @@
  */
 
 typedef uint32_t Fnv32_t;
-#define FNV1_32_INIT ((Fnv32_t) 33554467UL)
-#define FNV_32_PRIME ((Fnv32_t) 0x01000193UL)
+#define FNV1_32_INIT ((Fnv32_t)33554467UL)
+#define FNV_32_PRIME ((Fnv32_t)0x01000193UL)
 
-static __inline Fnv32_t
-fnv_32_str(const char *str, Fnv32_t hval)
+static __inline Fnv32_t fnv_32_str(const char *str, Fnv32_t hval)
 {
 	const u_int8_t *s = (const u_int8_t *)str;
 	Fnv32_t c;
